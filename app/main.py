@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
+import asyncio
 
 from app.api import search, bookshelf, reader, sources
 from app.api import reader
@@ -33,11 +34,16 @@ if not os.path.exists("web"):
 app.mount("/static", StaticFiles(directory="web"), name="static")
 
 app.include_router(search.router, prefix="/api/search", tags=["搜索"])
-#app.include_router(bookshelf.router, prefix="/api/bookshelf", tags=["书架"])
+app.include_router(bookshelf.router, prefix="/api/bookshelf", tags=["书架"])
 app.include_router(reader.router, prefix="/api/reader", tags=["阅读"])
-#app.include_router(sources.router, prefix="/api/sources", tags=["书源"])
+app.include_router(sources.router, prefix="/api/sources", tags=["书源"])
 
 # --- 4. 基础路由 ---
+
+@app.on_event("startup")
+async def start_bookshelf_update_watcher():
+    """后台定时检查书架更新提醒"""
+    asyncio.create_task(bookshelf.update_watcher())
 
 @app.get("/")
 async def index():
