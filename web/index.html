@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>云读小说 - 预览版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body class="bg-gray-50 flex h-screen">
+
+<div id="app" class="flex w-full">
+    <aside class="w-64 bg-white border-r flex flex-col p-6 shadow-sm">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center text-white font-bold">读</div>
+            <h1 class="text-lg font-bold">云读小说</h1>
+        </div>
+        <nav class="space-y-2">
+            <button class="w-full text-left px-4 py-2 rounded bg-blue-50 text-blue-600 font-medium">发现</button>
+            <button class="w-full text-left px-4 py-2 rounded hover:bg-gray-100 text-gray-600">书架</button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col">
+        <header class="p-4 bg-white border-b flex justify-center shadow-sm">
+            <div class="w-full max-w-3xl flex gap-2">
+                <input v-model="keyword" @keyup.enter="doSearch" type="text" placeholder="搜索书名..." 
+                       class="flex-1 border rounded-md px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500">
+                <button @click="doSearch" class="bg-teal-600 text-white px-8 py-2 rounded-md hover:bg-teal-700 transition">
+                    搜索
+                </button>
+            </div>
+        </header>
+
+        <section class="p-8 overflow-y-auto flex-1">
+            <div v-if="view === 'search'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="book in books" @click="openBook(book)" class="cursor-pointer bg-white p-4 rounded-xl border hover:border-teal-500 transition flex gap-4">
+                    <img :src="getCover(book.articleid)" class="w-20 h-28 object-cover rounded shadow-sm">
+                    <div class="flex-1">
+                        <h3 class="font-bold">{{ book.articlename }}</h3>
+                        <p class="text-xs text-red-500">{{ book.author }}</p>
+                    </div>
+                </div>
+            </div>
+        
+            <div v-if="view === 'chapters'" class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow">
+                <button @click="view='search'" class="mb-4 text-teal-600">← 返回搜索</button>
+                <h2 class="text-2xl font-bold mb-6">{{ currentBook.articlename }} - 目录</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <div v-for="ch in chapters" @click="readChapter(ch)" class="p-2 border rounded hover:bg-gray-50 cursor-pointer text-sm truncate">
+                        {{ ch.chaptername }}
+                    </div>
+                </div>
+            </div>
+        
+            <div v-if="view === 'read'" class="max-w-2xl mx-auto bg-[#f4f1e9] min-h-screen p-10 shadow-inner text-gray-800">
+                <div class="flex justify-between mb-8">
+                    <button @click="view='chapters'" class="text-gray-500">目录</button>
+                    <span class="text-gray-400 text-sm">{{ currentChapterTitle }}</span>
+                </div>
+                <h1 class="text-3xl font-bold mb-10 text-center">{{ currentChapterTitle }}</h1>
+                <div class="novel-content text-xl leading-loose tracking-wide" v-html="currentContent"></div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+    const { createApp, ref } = Vue;
+createApp({
+    setup() {
+        const view = ref('search'); // 视图状态：search 或 read
+        const keyword = ref('剑来');
+        const books = ref([]);
+        const chapters = ref([]);
+        const currentContent = ref('');
+        const currentBook = ref(null);
+        const currentChapterTitle = ref('');
+        const loading = ref(false);
+
+        // 1. 搜索
+        const doSearch = async () => {
+            loading.value = true;
+            view.value = 'search';
+            const res = await fetch(`http://127.0.0.1:8000/api/search?q=${keyword.value}`);
+            const json = await res.json();
+            books.value = json.data.items || [];
+            loading.value = false;
+        };
+
+        // 2. 打开目录
+        const openBook = async (book) => {
+            currentBook.value = book;
+            loading.value = true;
+            const res = await fetch(`http://127.0.0.1:8000/api/reader/chapters/${book.articleid}`);
+            const json = await res.json();
+            chapters.value = json.data;
+            view.value = 'chapters'; // 切换到目录视图
+            loading.value = false;
+        };
+
+        // 3. 阅读正文
+        const readChapter = async (chapter) => {
+            loading.value = true;
+            currentChapterTitle.value = chapter.chaptername;
+            const res = await fetch(`http://127.0.0.1:8000/api/reader/content/${currentBook.value.articleid}/${chapter.chapterid}`);
+            const json = await res.json();
+            // 处理换行符，变成 HTML 段落
+            currentContent.value = json.data.content.split('\n').map(p => `<p class="mb-4 indent-8">${p}</p>`).join('');
+            view.value = 'read'; // 切换到阅读视图
+            window.scrollTo(0, 0);
+            loading.value = false;
+        };
+
+        const getCover = (id) => `https://pic.cooks.tw/${Math.floor(id/1000)}/${id}/${id}s.jpg`;
+
+        return { view, keyword, books, chapters, currentContent, currentBook, currentChapterTitle, loading, doSearch, openBook, readChapter, getCover };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>

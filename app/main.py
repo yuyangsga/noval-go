@@ -1,0 +1,64 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+from app.api import search, bookshelf, reader, sources
+from app.api import reader
+
+app = FastAPI(
+    title="云读小说 API",
+    description="基于 FastAPI 的高性能异步小说阅读器后端",
+    version="1.0.0"
+)
+
+# --- 1. 配置跨域 (CORS) ---
+# 允许前端页面（如 Live Server 或本地文件）访问 API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- 2. 挂载静态资源 ---
+# 假设你的前端文件放在项目根目录下的 /web 文件夹中
+# 如果该文件夹不存在，我们先创建一个空的，防止报错
+if not os.path.exists("web"):
+    os.makedirs("web")
+
+# 挂载后，你可以通过 /static/xxx 访问 web 目录下的文件
+app.mount("/static", StaticFiles(directory="web"), name="static")
+
+app.include_router(search.router, prefix="/api/search", tags=["搜索"])
+#app.include_router(bookshelf.router, prefix="/api/bookshelf", tags=["书架"])
+app.include_router(reader.router, prefix="/api/reader", tags=["阅读"])
+#app.include_router(sources.router, prefix="/api/sources", tags=["书源"])
+
+# --- 4. 基础路由 ---
+
+@app.get("/")
+async def index():
+    """主页入口：自动返回前端页面"""
+    index_path = os.path.join("web", "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "云读小说后端已启动，请将前端 index.html 放入 web 文件夹中。"}
+
+@app.get("/api/health")
+async def health_check():
+    """健康检查接口"""
+    return {"status": "healthy", "service": "cloud-reader-api"}
+
+# --- 5. 启动配置 ---
+if __name__ == "__main__":
+    import uvicorn
+    import sys
+    import os
+    
+    # 将当前目录的上一级添加到路径，这样就能找到 app 包了
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
