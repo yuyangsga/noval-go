@@ -1,16 +1,91 @@
 from fastapi import APIRouter, Query
+import asyncio
 import httpx
 
 from app.api.bookshelf import load_db
 
 router = APIRouter()
 
-# 模拟你之前提供的书源配置中的搜索 URL 逻辑
-SEARCH_URL = "https://novel.cooks.tw/api/novel/search"
+
+def _extract_field(item: dict, field_map: dict, key: str) -> str:
+    src_key = field_map.get(key, key)
+    return str(item.get(src_key, "") or "")
+
+
+async def _search_source(source: dict, keyword: str, page: int) -> list[dict]:
+    if not source.get("enabled", True):
+        return []
+
+    base_url = (source.get("base_url") or "").rstrip("/")
+    search_path = source.get("search_path") or ""
+    if not base_url or not search_path:
+        return []
+
+    url = base_url + search_path.replace("{query}", keyword).replace("{page}", str(page))
+    field_map = source.get("field_map") or {}
+    source_id = source.get("id", "")
+    source_name = source.get("name", "未知")
+    source_color = source.get("color", "#888")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, timeout=10.0)
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception:
+        return []
+
+    items_raw = data.get("data", {}).get("items", []) if isinstance(data.get("data"), dict) else []
+
+    results = []
+    for item in items_raw:
+        if not isinstance(item, dict):
+            continue
+        results.append({
+            "articleid": _extract_field(item, field_map, "aid"),
+            "articlename": _extract_field(item, field_map, "name"),
+            "author": _extract_field(item, field_map, "author"),
+            "cover": _extract_field(item, field_map, "cover"),
+            "intro": _extract_field(item, field_map, "intro"),
+            "source_id": source_id,
+            "source_name": source_name,
+            "source_color": source_color,
+        })
+    return results
+
+
+async def _search_all(keyword: str, page: int) -> list[dict]:
+    db = load_db()
+    sources = db.get("sources", [])
+    enabled = [s for s in sources if s.get("enabled", True)]
+    if not enabled:
+        return []
+
+    tasks = [_search_source(s, keyword, page) for s in enabled]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    merged = []
+    for r in results:
+        if isinstance(r, list):
+            merged.extend(r)
+    return merged
+
+
+async def _search_source_by_id(source_id: str, keyword: str, page: int) -> list[dict]:
+    db = load_db()
+    sources = db.get("sources", [])
+    source = None
+    for s in sources:
+        if s.get("id") == source_id:
+            source = s
+            break
+    if not source:
+        return []
+    return await _search_source(source, keyword, page)
+
 
 @router.get("/suggest")
 async def suggest(q: str = Query("", description="联想关键词")):
-    """搜索联想，优先返回书架命中，再补充远端搜索结果"""
     keyword = q.strip()
     suggestions = []
 
@@ -21,57 +96,42 @@ async def suggest(q: str = Query("", description="联想关键词")):
                 "name": name,
                 "author": book.get("author", ""),
                 "aid": book.get("aid", ""),
-                "source": "shelf",
+                "source_id": book.get("source_id", ""),
+                "source_name": "书架",
+                "source_color": "#0d9488",
             })
 
     if keyword:
-        params = {
-            "q": keyword,
-            "page": 1,
-            "limit": 8,
-            "lang": "zh-CN"
-        }
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.get(SEARCH_URL, params=params, timeout=6.0)
-                response.raise_for_status()
-                items = response.json().get("data", {}).get("items", [])
-                for item in items:
-                    name = item.get("articlename", "")
-                    if name and all(existing["name"] != name for existing in suggestions):
-                        suggestions.append({
-                            "name": name,
-                            "author": item.get("author", ""),
-                            "aid": str(item.get("articleid", "")),
-                            "source": "remote",
-                        })
-            except Exception:
-                pass
+        remote = await _search_all(keyword, 1)
+        seen = {s["name"] for s in suggestions}
+        for item in remote:
+            if item["articlename"] and item["articlename"] not in seen:
+                seen.add(item["articlename"])
+                suggestions.append({
+                    "name": item["articlename"],
+                    "author": item["author"],
+                    "aid": item["articleid"],
+                    "source_id": item["source_id"],
+                    "source_name": item["source_name"],
+                    "source_color": item["source_color"],
+                })
 
-    return {"suggestions": suggestions[:8]}
+    return {"suggestions": suggestions[:12]}
+
 
 @router.get("/")
-async def search(q: str = Query(..., description="搜索关键词"), page: int = 1):
-    """
-    搜索书籍接口
-    """
-    params = {
-        "q": q,
-        "page": page,
-        "limit": 20,
-        "lang": "zh-CN"
-    }
-    
-    async with httpx.AsyncClient() as client:
-        try:
-            # 发起异步请求
-            response = await client.get(SEARCH_URL, params=params, timeout=10.0)
-            response.raise_for_status()
-            data = response.json()
-            
-            # 这里可以直接返回原始数据，或者根据你的模型进行清洗
-            # 对应书源规则中的 $.data.items
-            return data
-            
-        except Exception as e:
-            return {"error": str(e), "msg": "搜索接口调用失败"}
+async def search(
+    q: str = Query(..., description="搜索关键词"),
+    page: int = 1,
+    source: str = Query("", description="指定书源ID，留空则搜索全部"),
+):
+    keyword = q.strip()
+    if not keyword:
+        return {"data": {"items": []}}
+
+    if source:
+        items = await _search_source_by_id(source, keyword, page)
+    else:
+        items = await _search_all(keyword, page)
+
+    return {"data": {"items": items}}

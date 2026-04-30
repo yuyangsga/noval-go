@@ -6,7 +6,33 @@ import os
 import asyncio
 
 from app.api import search, bookshelf, reader, sources
-from app.api import reader
+
+DEFAULT_SOURCE_ID = "cooks_tw"
+DEFAULT_SOURCE = {
+    "id": DEFAULT_SOURCE_ID,
+    "name": "Cooks小说",
+    "base_url": "https://novel.cooks.tw",
+    "search_path": "/api/novel/search?q={query}&page={page}&limit=20&lang=zh-CN",
+    "chapter_list_path": "/api/chapter/list/{aid}?lang=zh-CN",
+    "chapter_content_path": "/api/chapter/content/{aid}/{cid}?lang=zh-CN",
+    "enabled": True,
+    "color": "#0d9488",
+    "field_map": {
+        "name": "articlename",
+        "author": "author",
+        "aid": "articleid",
+        "cover": "cover",
+        "intro": "intro",
+    },
+}
+
+def ensure_default_source():
+    db = bookshelf.load_db()
+    sources_list = db.get("sources", [])
+    if not any(s.get("id") == DEFAULT_SOURCE_ID for s in sources_list):
+        sources_list.append(DEFAULT_SOURCE)
+        db["sources"] = sources_list
+        bookshelf.save_db(db)
 
 app = FastAPI(
     title="云读小说 API",
@@ -42,7 +68,8 @@ app.include_router(sources.router, prefix="/api/sources", tags=["书源"])
 
 @app.on_event("startup")
 async def start_bookshelf_update_watcher():
-    """后台定时检查书架更新提醒"""
+    """初始化并启动后台任务"""
+    ensure_default_source()
     asyncio.create_task(bookshelf.update_watcher())
 
 @app.get("/")

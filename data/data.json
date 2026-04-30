@@ -1,58 +1,22 @@
 {
-    "bookshelf": [
+    "bookshelf": [],
+    "sources": [
         {
-            "aid": "172337",
-            "name": "剑来",
-            "author": "烽火戏诸侯",
-            "cover": "https://pic.cooks.tw/172/172337/172337s.jpg",
-            "tags": [],
-            "progress": {
-                "chapterid": "336328",
-                "chaptername": "第二章 开门",
-                "index": 1
-            },
-            "has_update": false,
-            "latest_chapter_id": "337605",
-            "latest_chapter_name": "第52章 也曾少年思无邪",
-            "latest_chapter_count": 1279,
-            "latest_checked_at": "2026-04-28T09:38:16.769811+00:00",
-            "cached": false,
-            "cached_at": ""
-        },
-        {
-            "aid": "362912",
-            "name": "斗破苍穹",
-            "author": "天蚕土豆",
-            "cover": "https://pic.cooks.tw/362/362912/362912s.jpg",
-            "tags": [],
-            "progress": null,
-            "has_update": false,
-            "latest_chapter_id": "667483",
-            "latest_chapter_name": "《斗破苍穹：斗帝之路》手游·角色传记（下）",
-            "latest_chapter_count": 1663,
-            "latest_checked_at": "2026-04-28T09:38:17.299282+00:00",
-            "cached": false,
-            "cached_at": ""
-        },
-        {
-            "aid": "362962",
-            "name": "武动乾坤",
-            "author": "天蚕土豆",
-            "cover": "https://pic.cooks.tw/362/362962/362962s.jpg",
-            "tags": [],
-            "progress": {
-                "chapterid": "637878",
-                "chaptername": "第一章 林动",
-                "index": 0
-            },
-            "has_update": false,
-            "latest_chapter_id": "",
-            "latest_chapter_name": "",
-            "latest_chapter_count": 0,
-            "latest_checked_at": "",
-            "cached": false,
-            "cached_at": ""
+            "id": "cooks_tw",
+            "name": "Cooks小说",
+            "base_url": "https://novel.cooks.tw",
+            "search_path": "/api/novel/search?q={query}&page={page}&limit=20&lang=zh-CN",
+            "chapter_list_path": "/api/chapter/list/{aid}?lang=zh-CN",
+            "chapter_content_path": "/api/chapter/content/{aid}/{cid}?lang=zh-CN",
+            "enabled": true,
+            "color": "#0d9488",
+            "field_map": {
+                "name": "articlename",
+                "author": "author",
+                "aid": "articleid",
+                "cover": "cover",
+                "intro": "intro"
+            }
         }
-    ],
-    "sources": []
+    ]
 }

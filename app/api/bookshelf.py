@@ -22,6 +22,7 @@ class BookItem(BaseModel):
     author: str = ""
     cover: str = ""
     tags: list[str] = Field(default_factory=list)
+    source_id: str = ""
 
 class ProgressItem(BaseModel):
     chapterid: str
@@ -40,6 +41,7 @@ def normalize_book(book: dict[str, Any]):
     book.setdefault("author", "")
     book.setdefault("cover", "")
     book.setdefault("tags", [])
+    book.setdefault("source_id", "")
     book.setdefault("progress", None)
     book.setdefault("has_update", False)
     book.setdefault("latest_chapter_id", "")
@@ -93,9 +95,27 @@ def mark_cached(aid: str):
         book["cached_at"] = now_iso()
         save_db(db)
 
-async def fetch_latest_chapter(aid: str):
+def unmark_cached(aid: str):
+    db = load_db()
+    book = find_book(db, aid)
+    if book:
+        book["cached"] = False
+        book["cached_at"] = ""
+        save_db(db)
+
+async def fetch_latest_chapter(aid: str, source_id: str = ""):
+    url = f"{BASE_URL}/api/chapter/list/{aid}?lang=zh-CN"
+    if source_id:
+        from app.api.sources import _find_source, _get_sources
+        db = load_db()
+        source = _find_source(_get_sources(db), source_id)
+        if source and source.get("base_url") and source.get("chapter_list_path"):
+            base = source["base_url"].rstrip("/")
+            tpl = source["chapter_list_path"]
+            url = base + tpl.replace("{aid}", aid)
+
     async with httpx.AsyncClient() as client:
-        resp = await client.get(f"{BASE_URL}/api/chapter/list/{aid}?lang=zh-CN", timeout=10.0)
+        resp = await client.get(url, timeout=10.0)
         resp.raise_for_status()
         chapters = resp.json().get("data") or []
 
@@ -115,7 +135,7 @@ async def check_bookshelf_updates():
 
     for book in db["bookshelf"]:
         try:
-            latest = await fetch_latest_chapter(book["aid"])
+            latest = await fetch_latest_chapter(book["aid"], book.get("source_id", ""))
         except Exception:
             book["latest_checked_at"] = now_iso()
             changed = True
@@ -165,6 +185,8 @@ async def add_to_shelf(book: BookItem):
             "author": book.author or existing.get("author", ""),
             "cover": book.cover or existing.get("cover", ""),
         })
+        if book.source_id:
+            existing["source_id"] = book.source_id
         save_db(db)
         return {"msg": "书籍已在书架中"}
     
@@ -223,7 +245,9 @@ async def check_updates():
 
 @router.delete("/remove/{aid}")
 async def remove_from_shelf(aid: str):
-    """从书架移除"""
+    """从书架移除并清除缓存"""
+    from app.api.reader import _clear_book_cache
+    _clear_book_cache(aid)
     db = load_db()
     db["bookshelf"] = [item for item in db["bookshelf"] if str(item.get("aid")) != aid]
     save_db(db)
