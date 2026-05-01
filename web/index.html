@@ -4,465 +4,376 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>云读小说</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <style>
-        [v-cloak] { display: none; }
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        button { -webkit-tap-highlight-color: transparent; }
-        .novel-content p { margin: 0 0 1.45em; text-indent: 2em; line-height: 1.9; }
-        .theme-eye { --page-bg: #f4f7ef; --paper-bg: #fbfff4; --paper-text: #263526; --paper-muted: #73836d; --paper-border: #dae6d1; }
-        .theme-night { --page-bg: #000; --paper-bg: #000; --paper-text: #d9d9d9; --paper-muted: #7a7a7a; --paper-border: #1d1d1d; }
-        .theme-parchment { --page-bg: #efe1bf; --paper-bg: #f7ebcd; --paper-text: #4b331d; --paper-muted: #92734a; --paper-border: #dcc899; }
-        .reader-surface { background: var(--page-bg); color: var(--paper-text); }
-        .reader-paper { background: var(--paper-bg); color: var(--paper-text); border-color: var(--paper-border); }
-        .reader-muted { color: var(--paper-muted); }
-        .reader-divider { border-color: var(--paper-border); }
-    </style>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body class="bg-slate-100 h-screen overflow-hidden">
-
-<div id="app" v-cloak class="flex h-screen w-full text-slate-900">
-    <aside class="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col p-5">
-        <div class="flex items-center gap-3 mb-8">
-            <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold">读</div>
+<body>
+<div id="app" v-cloak class="app-shell text-slate-900">
+    <aside class="desktop-sidebar">
+        <div class="brand-row">
+            <div class="brand-mark">读</div>
             <div>
-                <h1 class="text-lg font-bold leading-tight">云读小说</h1>
-                <p class="text-xs text-slate-400">私人书架</p>
+                <h1 class="brand-title">云读小说</h1>
+                <p class="brand-subtitle">私人书架</p>
             </div>
         </div>
 
-        <nav class="space-y-2">
-            <button @click="setView('search')"
-                    :class="navClass(view === 'search' || view === 'chapters')">
+        <nav class="nav-stack">
+            <button @click="setView('search')" :class="navClass(view === 'search' || view === 'chapters')">
                 <span v-html="icon('search')"></span>
                 <span>发现</span>
             </button>
-            <button @click="openShelf"
-                    :class="navClass(view === 'shelf')">
+            <button @click="openShelf" :class="navClass(view === 'shelf')">
                 <span v-html="icon('library')"></span>
                 <span>书架</span>
             </button>
-            <button @click="openSources"
-                    :class="navClass(view === 'sources')">
+            <button @click="openSources" :class="navClass(view === 'sources')">
                 <span v-html="icon('globe')"></span>
                 <span>书源</span>
             </button>
         </nav>
 
-        <div class="mt-8">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-xs text-slate-400 font-bold tracking-wider">主题</span>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
+        <div class="sidebar-block">
+            <div class="sidebar-label">主题</div>
+            <div class="theme-grid">
                 <button v-for="item in themes" :key="item.key"
                         @click="setTheme(item.key)"
                         :title="item.name"
-                        :class="['h-10 rounded-md border flex items-center justify-center', theme === item.key ? 'border-teal-500 ring-2 ring-teal-100' : 'border-slate-200']">
-                    <span :class="['w-5 h-5 rounded-full border', item.swatch]"></span>
+                        :class="['theme-chip', theme === item.key ? 'theme-chip-active' : '']">
+                    <span :class="['theme-swatch', item.swatch]"></span>
                 </button>
             </div>
         </div>
 
-        <div class="mt-auto border-t border-slate-200 pt-5">
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-xs text-slate-400 font-bold tracking-wider">字号</span>
+        <div class="sidebar-footer">
+            <div class="flex items-center justify-between mb-2">
+                <span class="sidebar-label">字号</span>
                 <span class="text-sm text-slate-500">{{ fontSize }}px</span>
             </div>
-            <input type="range" v-model="fontSize" min="14" max="32"
-                   class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600">
+            <input type="range" v-model="fontSize" min="14" max="32" class="range-control">
         </div>
     </aside>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-white">
-        <header v-if="view !== 'read'" class="px-4 md:px-8 py-4 border-b border-slate-200 bg-white">
-            <div class="max-w-5xl mx-auto flex gap-2 relative">
-                <div class="relative flex-1 min-w-0">
-                    <span v-html="icon('search')" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></span>
+    <main class="main-shell">
+        <header v-if="view !== 'read'" class="topbar">
+            <div class="topbar-inner">
+                <div class="search-box">
+                    <span v-html="icon('search')" class="search-icon"></span>
                     <input v-model="keyword"
                            @input="fetchSuggestions"
                            @focus="fetchSuggestions"
                            @keyup.enter="doSearch"
                            type="text"
                            placeholder="搜索书名或作者"
-                           class="w-full border border-slate-200 rounded-md pl-10 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition">
-                    <div v-if="showSuggestions && suggestions.length"
-                         class="absolute left-0 right-0 top-12 bg-white border border-slate-200 rounded-md shadow-xl z-30 overflow-hidden">
-                        <button v-for="item in suggestions" :key="(item.source_id||'') + item.name"
+                           class="search-input">
+                    <div v-if="showSuggestions && suggestions.length" class="suggestion-panel">
+                        <button v-for="item in suggestions" :key="(item.source_id || '') + item.name"
                                 @mousedown.prevent="chooseSuggestion(item)"
-                                class="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 text-left">
-                            <span class="flex items-center gap-2 min-w-0">
-                                <span class="font-medium text-slate-800 truncate">{{ item.name }}</span>
-                                <span class="text-xs text-slate-400 truncate">{{ item.author }}</span>
+                                class="suggestion-item">
+                            <span class="min-w-0">
+                                <span class="suggestion-title">{{ item.name }}</span>
+                                <span class="suggestion-meta">{{ item.author || '未知作者' }}</span>
                             </span>
-                            <span class="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                            <span class="source-pill"
                                   :style="{ background: (item.source_color || '#e2e8f0') + '22', color: item.source_color || '#64748b' }">
                                 {{ item.source_name || '未知' }}
                             </span>
                         </button>
                     </div>
                 </div>
-                <button @click="doSearch" class="h-11 w-12 sm:w-auto sm:px-5 md:px-7 rounded-md bg-teal-600 text-white hover:bg-teal-700 transition flex items-center justify-center gap-2 flex-shrink-0">
+                <button @click="doSearch" class="primary-action search-action">
                     <span v-html="icon('arrow-right')"></span>
                     <span class="hidden sm:inline">搜索</span>
                 </button>
             </div>
         </header>
 
-        <section ref="scrollPane" :class="['flex-1 overflow-y-auto scroll-smooth', view === 'read' ? readerThemeClass : 'bg-slate-50']">
-            <div v-if="loading" class="flex justify-center py-20">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600"></div>
+        <section ref="scrollPane" :class="['content-pane', view === 'read' ? readerThemeClass : '']">
+            <div v-if="loading" class="loading-state">
+                <div class="spinner"></div>
+                <p>{{ loadingText }}</p>
             </div>
 
-            <!-- 搜索结果 / 首页 -->
-            <div v-if="view === 'search' && !loading" class="max-w-6xl mx-auto p-4 md:p-8">
-                <div v-if="books.length" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    <button v-for="book in books" :key="(book.source_id||'') + book.articleid"
-                            @click="openBook(book, false)"
-                            class="group text-left bg-white p-4 rounded-md border border-slate-200 hover:border-teal-500 hover:shadow-md transition flex gap-4 min-h-36">
-                        <img :src="book.cover || getCover(book.articleid)" class="w-20 h-28 object-cover rounded bg-slate-100 flex-shrink-0">
-                        <span class="flex-1 min-w-0">
-                            <span class="flex items-center gap-2 mb-1">
-                                <span class="font-bold text-slate-800 truncate">{{ book.articlename }}</span>
-                                <span class="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                                      :style="{ background: (book.source_color || '#e2e8f0') + '22', color: book.source_color || '#64748b' }">
-                                    {{ book.source_name || '未知' }}
-                                </span>
-                            </span>
-                            <span class="block text-xs text-rose-500 my-1">{{ book.author }}</span>
-                            <span class="block text-xs text-slate-400 line-clamp-3 mt-2">{{ book.intro }}</span>
-                            <span @click.stop="addToShelf(book)" class="inline-flex mt-3 text-xs border border-teal-500 text-teal-700 px-3 py-1 rounded-md hover:bg-teal-50 transition">
-                                加入书架
-                            </span>
-                        </span>
-                    </button>
-                </div>
+            <div v-if="view === 'search' && !loading" class="page-wrap">
+                <section v-if="!hasSearched && books.length === 0" class="home-layout">
+                    <div class="home-lead">
+                        <p class="eyebrow">云读小说</p>
+                        <h2>静下来，读下一章</h2>
+                        <p class="home-copy">从书架、书源与阅读进度里，挑一本今天想读的书。</p>
 
-                <div v-else-if="!hasSearched" class="space-y-8">
-                    <section class="grid lg:grid-cols-[1.15fr_0.85fr] gap-6 items-stretch">
-                        <div class="py-4 md:py-8">
-                            <p class="text-sm font-semibold text-teal-700">云读小说</p>
-                            <h2 class="mt-3 text-3xl md:text-4xl font-bold tracking-normal text-slate-950">找一本书，接着读下去</h2>
-                            <p class="mt-4 max-w-2xl text-sm md:text-base leading-7 text-slate-500">
-                                搜索书名、作者或题材，结果会按书源聚合展示；喜欢的书可以加入书架，稍后继续阅读。
-                            </p>
-                            <div class="mt-6 flex flex-wrap gap-2">
-                                <button v-for="term in quickTerms" :key="term"
-                                        @click="searchTerm(term)"
-                                        class="h-9 px-3 rounded-md bg-white border border-slate-200 text-sm text-slate-700 hover:border-teal-500 hover:text-teal-700 transition">
-                                    {{ term }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="grid sm:grid-cols-3 lg:grid-cols-1 gap-3">
-                            <div class="bg-white border border-slate-200 rounded-md p-4">
-                                <p class="text-xs text-slate-400">书架</p>
-                                <p class="mt-2 text-2xl font-bold text-slate-900">{{ shelf.length }}</p>
-                                <p class="mt-1 text-xs text-slate-500">本收藏</p>
-                            </div>
-                            <div class="bg-white border border-slate-200 rounded-md p-4">
-                                <p class="text-xs text-slate-400">书源</p>
-                                <p class="mt-2 text-2xl font-bold text-slate-900">{{ enabledSourceCount }}</p>
-                                <p class="mt-1 text-xs text-slate-500">个启用</p>
-                            </div>
-                            <div class="bg-white border border-slate-200 rounded-md p-4">
-                                <p class="text-xs text-slate-400">缓存</p>
-                                <p class="mt-2 text-2xl font-bold text-slate-900">{{ cachedBookCount }}</p>
-                                <p class="mt-1 text-xs text-slate-500">本离线</p>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section v-if="recentShelf.length">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="font-bold text-slate-900">最近书架</h3>
-                            <button @click="openShelf" class="text-sm text-teal-700 hover:text-teal-800">查看全部</button>
-                        </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <button v-for="book in recentShelf" :key="book.aid"
-                                    @click="openBook({ articleid: book.aid, articlename: book.name, author: book.author, progress: book.progress, source_id: book.source_id }, true)"
-                                    class="bg-white border border-slate-200 rounded-md p-3 text-left hover:border-teal-500 transition">
-                                <div class="flex gap-3">
-                                    <img :src="book.cover" class="w-14 h-20 object-cover rounded bg-slate-100 flex-shrink-0">
-                                    <span class="min-w-0">
-                                        <span class="block text-sm font-bold text-slate-800 truncate">{{ book.name }}</span>
-                                        <span class="block mt-1 text-xs text-slate-400 truncate">{{ book.author || '未知作者' }}</span>
-                                        <span v-if="book.progress" class="block mt-2 text-xs text-teal-700 truncate">{{ book.progress.chaptername }}</span>
-                                    </span>
-                                </div>
+                        <div class="home-search-row">
+                            <button v-for="term in quickTerms" :key="term" @click="searchTerm(term)" class="soft-chip">
+                                {{ term }}
                             </button>
                         </div>
+
+                        <div v-if="searchHistory.length" class="history-row">
+                            <span class="history-label" v-html="icon('clock')"></span>
+                            <button v-for="term in searchHistory" :key="term" @click="searchTerm(term)" class="history-chip">
+                                {{ term }}
+                            </button>
+                            <button @click="clearSearchHistory" class="quiet-link">清空</button>
+                        </div>
+                    </div>
+
+                    <div class="home-stats">
+                        <div class="metric-card">
+                            <span>书架</span>
+                            <strong>{{ shelf.length }}</strong>
+                            <small>本收藏</small>
+                        </div>
+                        <div class="metric-card">
+                            <span>书源</span>
+                            <strong>{{ enabledSourceCount }}</strong>
+                            <small>个启用</small>
+                        </div>
+                        <div class="metric-card">
+                            <span>缓存</span>
+                            <strong>{{ cachedBookCount }}</strong>
+                            <small>本离线</small>
+                        </div>
+                    </div>
+
+                    <section class="home-section">
+                        <div class="section-heading">
+                            <h3>最近打开</h3>
+                            <button v-if="recentDisplayBooks.length" @click="openShelf" class="quiet-link">查看书架</button>
+                        </div>
+                        <div v-if="recentDisplayBooks.length" class="recent-grid">
+                            <button v-for="book in recentDisplayBooks" :key="bookAid(book) + (book.source_id || '')"
+                                    @click="openBook(book, true)"
+                                    class="recent-card">
+                                <book-cover :src="bookCover(book)" :title="bookName(book)"></book-cover>
+                                <span class="min-w-0">
+                                    <strong>{{ bookName(book) }}</strong>
+                                    <small>{{ bookAuthor(book) || '未知作者' }}</small>
+                                    <small v-if="book.progress">{{ book.progress.chaptername }}</small>
+                                </span>
+                            </button>
+                        </div>
+                        <div v-else class="empty-panel">
+                            <span v-html="icon('book-open')"></span>
+                            <p>书架还是空的</p>
+                        </div>
                     </section>
 
-                    <section>
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="font-bold text-slate-900">当前书源</h3>
-                            <button @click="openSources" class="text-sm text-teal-700 hover:text-teal-800">管理</button>
+                    <section class="home-section">
+                        <div class="section-heading">
+                            <h3>当前书源</h3>
+                            <button @click="openSources" class="quiet-link">管理</button>
                         </div>
-                        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            <div v-for="src in sourcesList.slice(0, 6)" :key="src.id"
-                                 class="bg-white border border-slate-200 rounded-md p-4 flex items-center gap-3">
-                                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: src.color || '#64748b' }"></span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="block text-sm font-semibold text-slate-800 truncate">{{ src.name }}</span>
-                                    <span class="block text-xs text-slate-400 truncate">{{ src.base_url }}</span>
+                        <div class="source-grid">
+                            <div v-for="src in sourcesList.slice(0, 6)" :key="src.id" class="source-card">
+                                <span class="source-dot" :style="{ background: src.color || '#64748b' }"></span>
+                                <span class="min-w-0">
+                                    <strong>{{ src.name }}</strong>
+                                    <small>{{ src.base_url }}</small>
                                 </span>
-                                <span :class="['text-[11px] px-2 py-0.5 rounded-full', src.enabled ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-400']">
-                                    {{ src.enabled ? '启用' : '停用' }}
+                                <span :class="['status-pill', src.enabled !== false ? 'is-on' : 'is-off']">
+                                    {{ src.enabled !== false ? '启用' : '停用' }}
                                 </span>
                             </div>
                         </div>
                     </section>
-                </div>
+                </section>
 
-                <div v-else class="text-center py-20 text-slate-400">
-                    没找到相关书籍，换个关键词试试
-                </div>
+                <section v-else class="space-y-5">
+                    <div class="result-toolbar">
+                        <div>
+                            <p class="eyebrow">搜索结果</p>
+                            <h2>{{ keyword.trim() || '全部' }}</h2>
+                            <p class="text-sm text-slate-500">{{ filteredBooks.length }} / {{ books.length }} 条结果</p>
+                        </div>
+                        <div class="filter-row">
+                            <button @click="selectedSourceFilter = ''" :class="filterClass(!selectedSourceFilter)">
+                                全部
+                            </button>
+                            <button v-for="src in sourcesList" :key="src.id"
+                                    @click="selectedSourceFilter = src.id"
+                                    :class="filterClass(selectedSourceFilter === src.id)">
+                                {{ src.name }}
+                                <span>{{ sourceResultCount(src.id) }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="filteredBooks.length" class="result-grid">
+                        <button v-for="book in filteredBooks" :key="(book.source_id || '') + book.articleid"
+                                @click="openBookDetails(book)"
+                                class="book-result-card">
+                            <book-cover :src="bookCover(book)" :title="bookName(book)"></book-cover>
+                            <span class="result-body">
+                                <span class="result-title-row">
+                                    <strong>{{ bookName(book) }}</strong>
+                                    <span class="source-pill"
+                                          :style="{ background: (book.source_color || '#e2e8f0') + '22', color: book.source_color || '#64748b' }">
+                                        {{ book.source_name || getSourceName(book.source_id) || '未知' }}
+                                    </span>
+                                </span>
+                                <span class="result-author">{{ bookAuthor(book) || '未知作者' }}</span>
+                                <span class="result-intro">{{ book.intro || '暂无简介' }}</span>
+                                <span class="result-actions">
+                                    <span @click.stop="addToShelf(book)" class="mini-action">加入书架</span>
+                                    <span class="mini-action muted">详情</span>
+                                </span>
+                            </span>
+                        </button>
+                    </div>
+
+                    <div v-else class="empty-panel large">
+                        <span v-html="icon('search')"></span>
+                        <p>没有匹配的书籍</p>
+                        <button @click="selectedSourceFilter = ''" class="quiet-link">查看全部书源结果</button>
+                    </div>
+                </section>
             </div>
 
-            <!-- 书架 -->
-            <div v-if="view === 'shelf' && !loading" class="max-w-6xl mx-auto p-4 md:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div v-if="view === 'shelf' && !loading" class="page-wrap">
+                <div class="section-heading page-heading">
                     <div>
-                        <h2 class="text-2xl font-bold text-slate-900">我的书架</h2>
-                        <p class="text-sm text-slate-400 mt-1">{{ shelf.length }} 本书</p>
+                        <p class="eyebrow">私人书架</p>
+                        <h2>我的书架</h2>
+                        <p class="text-sm text-slate-500">{{ shelf.length }} 本书</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button @click="checkUpdates" class="h-10 px-3 rounded-md border border-slate-200 hover:bg-white flex items-center gap-2 text-sm text-slate-600">
+                    <div class="toolbar-actions">
+                        <button @click="checkUpdates" class="secondary-action">
                             <span v-html="icon('refresh-cw')"></span>
                             <span>检查更新</span>
                         </button>
-                        <button @click="clearAllCache" class="h-10 px-3 rounded-md border border-red-200 hover:bg-red-50 flex items-center gap-2 text-sm text-red-600">
+                        <button @click="clearAllCache" class="danger-action">
                             <span v-html="icon('trash-2')"></span>
-                            <span>清除全部缓存</span>
+                            <span>清除缓存</span>
                         </button>
                     </div>
                 </div>
 
-                <div v-if="allTags.length" class="flex flex-wrap gap-2 mb-6">
-                    <button @click="activeTag = ''"
-                            :class="tagFilterClass(activeTag === '')">全部</button>
-                    <button v-for="tag in allTags" :key="tag"
-                            @click="activeTag = tag"
-                            :class="tagFilterClass(activeTag === tag)">{{ tag }}</button>
+                <div v-if="allTags.length" class="filter-row mb-5">
+                    <button @click="activeTag = ''" :class="filterClass(activeTag === '')">全部</button>
+                    <button v-for="tag in allTags" :key="tag" @click="activeTag = tag" :class="filterClass(activeTag === tag)">
+                        {{ tag }}
+                    </button>
                 </div>
 
-                <div v-if="filteredShelf.length === 0" class="text-center py-20 border-2 border-dashed border-slate-200 rounded-md text-slate-400">
-                    书架还是空的
-                </div>
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-6">
-                    <div v-for="book in filteredShelf" :key="book.aid" class="group">
-                        <div @click="openBook({ articleid: book.aid, articlename: book.name, author: book.author, progress: book.progress, source_id: book.source_id }, true)"
-                             class="relative cursor-pointer aspect-[3/4] overflow-hidden rounded-md shadow-sm bg-slate-200">
-                            <img :src="book.cover" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                            <span v-if="book.has_update" class="absolute top-2 right-2 w-3 h-3 rounded-full bg-red-500 ring-2 ring-white"></span>
-                            <span v-if="book.cached" class="absolute left-2 top-2 bg-black/60 text-white text-[11px] px-2 py-0.5 rounded">已缓存</span>
-                            <span v-if="getSourceName(book.source_id)" class="absolute right-2 bottom-2 text-[10px] px-1.5 py-0.5 rounded font-medium"
-                                  :style="{ background: getSourceColor(book.source_id) + 'cc', color: '#fff' }">
-                                {{ getSourceName(book.source_id) }}
-                            </span>
-                        </div>
-                        <div class="mt-3">
-                            <h3 class="font-bold text-sm text-slate-800 truncate">{{ book.name }}</h3>
-                            <p class="text-xs text-slate-400 truncate">{{ book.author }}</p>
-                            <p v-if="book.progress" class="text-xs text-teal-700 mt-1 truncate">读到：{{ book.progress.chaptername }}</p>
-                            <p v-if="book.has_update && book.latest_chapter_name" class="text-xs text-red-500 mt-1 truncate">更新：{{ book.latest_chapter_name }}</p>
-                            <div class="flex flex-wrap gap-1 mt-2 min-h-6">
-                                <span v-for="tag in book.tags" :key="tag" class="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-500">{{ tag }}</span>
+                <div v-if="filteredShelf.length" class="shelf-grid">
+                    <div v-for="book in filteredShelf" :key="book.aid" class="shelf-card">
+                        <button @click="openBook(book, true)" class="shelf-cover-button">
+                            <book-cover :src="bookCover(book)" :title="bookName(book)"></book-cover>
+                            <span v-if="book.has_update" class="update-dot"></span>
+                            <span v-if="book.cached" class="cover-badge">已缓存</span>
+                        </button>
+                        <div class="shelf-meta">
+                            <strong>{{ book.name }}</strong>
+                            <small>{{ book.author || '未知作者' }}</small>
+                            <small v-if="book.progress" class="text-teal-700">读到：{{ book.progress.chaptername }}</small>
+                            <small v-if="book.has_update && book.latest_chapter_name" class="text-rose-500">更新：{{ book.latest_chapter_name }}</small>
+                            <div class="tag-row">
+                                <span v-for="tag in book.tags" :key="tag">{{ tag }}</span>
                             </div>
-                            <div class="flex gap-1 mt-2">
-                                <button @click="startTagEdit(book)" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-white flex items-center justify-center" title="标签">
-                                    <span v-html="icon('tag')"></span>
-                                </button>
-                                <button @click="cacheBook(book)" :disabled="cachingAid === book.aid"
-                                        class="h-8 w-8 rounded-md border border-slate-200 hover:bg-white disabled:opacity-50 flex items-center justify-center" title="全本缓存">
-                                    <span v-html="icon('download')"></span>
-                                </button>
-                                <button @click="downloadBook(book, 'txt')" :disabled="downloadingKey === `${book.aid}:txt`"
-                                        class="h-8 w-8 rounded-md border border-slate-200 hover:bg-white disabled:opacity-50 flex items-center justify-center" title="下载 TXT">
-                                    <span v-html="icon('file-text')"></span>
-                                </button>
-                                <button @click="downloadBook(book, 'epub')" :disabled="downloadingKey === `${book.aid}:epub`"
-                                        class="h-8 w-8 rounded-md border border-slate-200 hover:bg-white disabled:opacity-50 flex items-center justify-center" title="下载 EPUB">
-                                    <span v-html="icon('book-open')"></span>
-                                </button>
-                                <button @click="clearBookCache(book)"
-                                        class="h-8 w-8 rounded-md border border-red-200 hover:bg-red-50 text-red-500 flex items-center justify-center" title="清除缓存">
-                                    <span v-html="icon('database')"></span>
-                                </button>
-                                <button @click="removeFromShelf(book.aid)"
-                                        class="h-8 w-8 rounded-md border border-red-200 hover:bg-red-50 text-red-500 flex items-center justify-center" title="删除">
-                                    <span v-html="icon('trash-2')"></span>
-                                </button>
+                            <div class="icon-row">
+                                <button @click="startTagEdit(book)" title="标签"><span v-html="icon('tag')"></span></button>
+                                <button @click="cacheBook(book)" :disabled="cachingAid === book.aid" title="全本缓存"><span v-html="icon('download')"></span></button>
+                                <button @click="downloadBook(book, 'txt')" :disabled="downloadingKey === `${book.aid}:txt`" title="下载 TXT"><span v-html="icon('file-text')"></span></button>
+                                <button @click="downloadBook(book, 'epub')" :disabled="downloadingKey === `${book.aid}:epub`" title="下载 EPUB"><span v-html="icon('book-open')"></span></button>
+                                <button @click="clearBookCache(book)" title="清除缓存"><span v-html="icon('database')"></span></button>
+                                <button @click="removeFromShelf(book.aid)" title="删除"><span v-html="icon('trash-2')"></span></button>
                             </div>
-                            <div v-if="cachingAid === book.aid && cacheProgress.total > 0" class="mt-2">
-                                <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
-                                    <span>缓存中</span>
-                                    <span>{{ cacheProgress.current }}/{{ cacheProgress.total }}</span>
-                                </div>
-                                <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                    <div class="h-full bg-teal-500 rounded-full transition-all duration-300"
-                                         :style="{ width: (cacheProgress.total ? (cacheProgress.current / cacheProgress.total * 100) : 0) + '%' }"></div>
-                                </div>
+                            <div v-if="cachingAid === book.aid && cacheProgress.total > 0" class="progress-wrap">
+                                <span>{{ cacheProgress.current }}/{{ cacheProgress.total }}</span>
+                                <div><i :style="{ width: cachePercent + '%' }"></i></div>
                             </div>
-                            <div v-if="editingTagsAid === book.aid" class="mt-2 flex gap-1">
-                                <input v-model="tagDraft" @keyup.enter="saveTags(book)" class="min-w-0 flex-1 border border-slate-200 rounded-md px-2 py-1 text-xs" placeholder="玄幻, 完结">
-                                <button @click="saveTags(book)" class="px-2 rounded-md bg-slate-900 text-white text-xs">保存</button>
+                            <div v-if="editingTagsAid === book.aid" class="tag-editor">
+                                <input v-model="tagDraft" @keyup.enter="saveTags(book)" placeholder="玄幻, 完结">
+                                <button @click="saveTags(book)">保存</button>
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div v-else class="empty-panel large">
+                    <span v-html="icon('library')"></span>
+                    <p>书架还是空的</p>
+                    <button @click="setView('search')" class="quiet-link">去发现</button>
                 </div>
             </div>
 
-            <!-- 书源管理 -->
-            <div v-if="view === 'sources' && !loading" class="max-w-4xl mx-auto p-4 md:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div v-if="view === 'sources' && !loading" class="page-wrap narrow">
+                <div class="section-heading page-heading">
                     <div>
-                        <h2 class="text-2xl font-bold text-slate-900">书源管理</h2>
-                        <p class="text-sm text-slate-400 mt-1">{{ sourcesList.length }} 个书源</p>
+                        <p class="eyebrow">书源</p>
+                        <h2>书源管理</h2>
+                        <p class="text-sm text-slate-500">{{ sourcesList.length }} 个书源，{{ enabledSourceCount }} 个启用</p>
                     </div>
-                    <button @click="showSourceForm = true; editingSource = null; resetSourceForm()"
-                            class="h-10 px-4 rounded-md bg-teal-600 text-white hover:bg-teal-700 flex items-center gap-2 text-sm">
+                    <button @click="showSourceForm = true; editingSource = null; resetSourceForm()" class="primary-action">
                         <span v-html="icon('plus')"></span>
                         <span>添加书源</span>
                     </button>
                 </div>
 
-                <div v-if="sourcesList.length === 0" class="text-center py-20 border-2 border-dashed border-slate-200 rounded-md text-slate-400">
-                    还没有书源，点击上方按钮添加
-                </div>
-
-                <div class="space-y-3">
-                    <div v-for="src in sourcesList" :key="src.id"
-                         class="bg-white border border-slate-200 rounded-md p-4 flex items-center gap-4">
-                        <div class="w-3 h-3 rounded-full flex-shrink-0" :style="{ background: src.color || '#888' }"></div>
-                        <div class="flex-1 min-w-0">
+                <div class="source-list">
+                    <div v-for="src in sourcesList" :key="src.id" class="source-list-item">
+                        <span class="source-dot" :style="{ background: src.color || '#888' }"></span>
+                        <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
-                                <span class="font-bold text-slate-800">{{ src.name }}</span>
-                                <span class="text-[11px] px-2 py-0.5 rounded-full"
-                                      :class="src.enabled !== false ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-400'">
-                                    {{ src.enabled !== false ? '启用' : '禁用' }}
-                                </span>
+                                <strong>{{ src.name }}</strong>
+                                <span :class="['status-pill', src.enabled !== false ? 'is-on' : 'is-off']">{{ src.enabled !== false ? '启用' : '停用' }}</span>
                             </div>
-                            <p class="text-xs text-slate-400 truncate mt-1">{{ src.base_url }}</p>
+                            <p>{{ src.base_url }}</p>
                         </div>
-                        <div class="flex gap-1">
-                            <button @click="toggleSource(src)"
-                                    :class="['relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200', src.enabled !== false ? 'bg-green-500' : 'bg-slate-300']"
-                                    :title="src.enabled !== false ? '禁用' : '启用'">
-                                <span :class="['inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200', src.enabled !== false ? 'translate-x-6' : 'translate-x-1']"></span>
-                            </button>
-                            <button @click="editSource(src)"
-                                    class="h-9 w-9 rounded-md border border-slate-200 hover:bg-white flex items-center justify-center" title="编辑">
-                                <span v-html="icon('pencil')"></span>
-                            </button>
-                            <button @click="deleteSource(src)"
-                                    class="h-9 w-9 rounded-md border border-slate-200 hover:bg-red-50 text-red-500 flex items-center justify-center" title="删除">
-                                <span v-html="icon('trash-2')"></span>
-                            </button>
+                        <div class="icon-row compact">
+                            <button @click="toggleSource(src)" title="切换"><span v-html="icon(src.enabled !== false ? 'toggle-right' : 'toggle-left')"></span></button>
+                            <button @click="editSource(src)" title="编辑"><span v-html="icon('pencil')"></span></button>
+                            <button @click="deleteSource(src)" title="删除"><span v-html="icon('trash-2')"></span></button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 书源表单弹窗 -->
-                <div v-if="showSourceForm" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" @click.self="showSourceForm = false">
-                    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                        <div class="px-6 py-4 border-b border-slate-200">
-                            <h3 class="text-lg font-bold">{{ editingSource ? '编辑书源' : '添加书源' }}</h3>
+                <div v-if="showSourceForm" class="modal-backdrop" @click.self="showSourceForm = false">
+                    <div class="modal-panel">
+                        <div class="modal-header">
+                            <h3>{{ editingSource ? '编辑书源' : '添加书源' }}</h3>
+                            <button @click="showSourceForm = false" class="icon-button"><span v-html="icon('x')"></span></button>
                         </div>
-                        <div class="px-6 py-4 space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">名称</label>
-                                <input v-model="sourceForm.name" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="如：起点中文网">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Base URL</label>
-                                <input v-model="sourceForm.base_url" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="https://example.com">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">搜索路径</label>
-                                <input v-model="sourceForm.search_path" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="/api/search?q={query}&page={page}">
-                                <p class="text-[11px] text-slate-400 mt-1">用 {query} 表示关键词，{page} 表示页码</p>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">目录路径</label>
-                                <input v-model="sourceForm.chapter_list_path" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="/api/chapters/{aid}">
-                                <p class="text-[11px] text-slate-400 mt-1">用 {aid} 表示书籍ID</p>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">正文路径</label>
-                                <input v-model="sourceForm.chapter_content_path" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="/api/content/{aid}/{cid}">
-                                <p class="text-[11px] text-slate-400 mt-1">用 {aid} 表示书籍ID，{cid} 表示章节ID</p>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">标记颜色</label>
-                                <div class="flex items-center gap-2">
-                                    <input type="color" v-model="sourceForm.color" class="w-10 h-10 rounded border border-slate-200 cursor-pointer">
-                                    <input v-model="sourceForm.color" class="flex-1 border border-slate-200 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="#4F46E5">
-                                </div>
-                            </div>
-                            <div class="border-t border-slate-200 pt-4">
-                                <p class="text-xs font-medium text-slate-500 mb-3">字段映射（JSON响应中对应的标准字段名）</p>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-[11px] text-slate-500 mb-1">书名字段</label>
-                                        <input v-model="sourceForm.field_map.name" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" placeholder="articlename">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] text-slate-500 mb-1">作者字段</label>
-                                        <input v-model="sourceForm.field_map.author" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" placeholder="author">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] text-slate-500 mb-1">书籍ID字段</label>
-                                        <input v-model="sourceForm.field_map.aid" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" placeholder="articleid">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] text-slate-500 mb-1">封面字段</label>
-                                        <input v-model="sourceForm.field_map.cover" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" placeholder="cover">
-                                    </div>
-                                    <div class="col-span-2">
-                                        <label class="block text-[11px] text-slate-500 mb-1">简介字段</label>
-                                        <input v-model="sourceForm.field_map.intro" class="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" placeholder="intro">
-                                    </div>
-                                </div>
+                        <div class="form-grid">
+                            <label>名称<input v-model="sourceForm.name" placeholder="如：Cooks小说"></label>
+                            <label>Base URL<input v-model="sourceForm.base_url" placeholder="https://example.com"></label>
+                            <label>搜索路径<input v-model="sourceForm.search_path" placeholder="/api/search?q={query}&page={page}"></label>
+                            <label>目录路径<input v-model="sourceForm.chapter_list_path" placeholder="/api/chapters/{aid}"></label>
+                            <label>正文路径<input v-model="sourceForm.chapter_content_path" placeholder="/api/content/{aid}/{cid}"></label>
+                            <label>标记颜色<input v-model="sourceForm.color" placeholder="#4F46E5"></label>
+                            <div class="field-map">
+                                <p>字段映射</p>
+                                <input v-model="sourceForm.field_map.name" placeholder="书名字段">
+                                <input v-model="sourceForm.field_map.author" placeholder="作者字段">
+                                <input v-model="sourceForm.field_map.aid" placeholder="书籍ID字段">
+                                <input v-model="sourceForm.field_map.cover" placeholder="封面字段">
+                                <input v-model="sourceForm.field_map.intro" placeholder="简介字段">
                             </div>
                         </div>
-                        <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
-                            <button @click="showSourceForm = false" class="px-4 py-2 rounded-md border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">取消</button>
-                            <button @click="saveSource" class="px-4 py-2 rounded-md bg-teal-600 text-white text-sm hover:bg-teal-700">保存</button>
+                        <div class="modal-footer">
+                            <button @click="showSourceForm = false" class="secondary-action">取消</button>
+                            <button @click="saveSource" class="primary-action">保存</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 目录 -->
-            <div v-if="view === 'chapters' && !loading" class="max-w-5xl mx-auto p-4 md:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div v-if="view === 'chapters' && !loading" class="page-wrap narrow">
+                <div class="section-heading page-heading">
                     <div class="flex items-center gap-3 min-w-0">
-                        <button @click="setView('search')" class="h-10 w-10 rounded-md border border-slate-200 hover:bg-white flex items-center justify-center" title="返回">
-                            <span v-html="icon('arrow-left')"></span>
-                        </button>
+                        <button @click="setView('search')" class="icon-button"><span v-html="icon('arrow-left')"></span></button>
                         <div class="min-w-0">
-                            <h2 class="text-2xl font-bold truncate">{{ currentBook?.articlename }}</h2>
-                            <p class="text-sm text-slate-400">{{ chapters.length }} 章</p>
+                            <p class="eyebrow">目录</p>
+                            <h2 class="truncate">{{ currentBook?.articlename }}</h2>
+                            <p class="text-sm text-slate-500">{{ chapters.length }} 章</p>
                         </div>
                     </div>
-                    <div class="flex flex-wrap gap-2">
-                        <button @click="downloadBook(currentBook, 'txt')" :disabled="!currentBook || downloadingKey === `${currentBook?.articleid}:txt`"
-                                class="h-10 px-3 rounded-md border border-slate-200 bg-white hover:border-teal-500 disabled:opacity-50 flex items-center gap-2 text-sm text-slate-700">
-                            <span v-html="icon('file-text')"></span>
-                            <span>TXT</span>
+                    <div class="toolbar-actions">
+                        <button @click="downloadBook(currentBook, 'txt')" :disabled="!currentBook || downloadingKey === `${currentBook?.articleid}:txt`" class="secondary-action">
+                            <span v-html="icon('file-text')"></span><span>TXT</span>
                         </button>
-                        <button @click="downloadBook(currentBook, 'epub')" :disabled="!currentBook || downloadingKey === `${currentBook?.articleid}:epub`"
-                                class="h-10 px-3 rounded-md border border-slate-200 bg-white hover:border-teal-500 disabled:opacity-50 flex items-center gap-2 text-sm text-slate-700">
-                            <span v-html="icon('book-open')"></span>
-                            <span>EPUB</span>
+                        <button @click="downloadBook(currentBook, 'epub')" :disabled="!currentBook || downloadingKey === `${currentBook?.articleid}:epub`" class="secondary-action">
+                            <span v-html="icon('book-open')"></span><span>EPUB</span>
                         </button>
-                        <button @click="cacheBook(currentBook)" :disabled="!currentBook || cachingAid === String(currentBook.articleid)"
-                                class="h-10 px-3 rounded-md bg-slate-900 text-white disabled:opacity-50 hover:bg-slate-800 flex items-center gap-2 text-sm relative overflow-hidden">
+                        <button @click="cacheBook(currentBook)" :disabled="!currentBook || cachingAid === String(currentBook.articleid)" class="primary-action">
                             <span v-html="icon('download')"></span>
                             <span v-if="cachingAid === String(currentBook?.articleid) && cacheProgress.total > 0">{{ cacheProgress.current }}/{{ cacheProgress.total }}</span>
                             <span v-else-if="cachingAid === String(currentBook?.articleid)">缓存中</span>
@@ -470,648 +381,105 @@
                         </button>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+
+                <div class="chapter-grid">
                     <button v-for="(ch, index) in chapters" :key="ch.chapterid"
                             @click="readChapter(ch, index)"
-                            :class="['p-3 border rounded-md cursor-pointer text-sm truncate transition text-left', currentBook?.progress?.chapterid === String(ch.chapterid) ? 'border-teal-500 text-teal-700 bg-teal-50' : 'border-slate-200 hover:border-teal-500 hover:text-teal-700 bg-white']">
+                            :class="['chapter-item', currentBook?.progress?.chapterid === String(ch.chapterid) ? 'is-current' : '']">
                         {{ ch.chaptername }}
                     </button>
                 </div>
             </div>
 
-            <!-- 阅读 -->
-            <article v-if="view === 'read' && !loading"
-                     :class="['reader-surface min-h-full', readerThemeClass]"
-                     @click="handleReaderClick">
-                <div class="sticky top-0 z-20 reader-paper border-b reader-divider">
-                    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-                        <button @click.stop="setView('chapters')" class="h-9 w-9 rounded-md border reader-divider flex items-center justify-center" title="目录">
-                            <span v-html="icon('list')"></span>
-                        </button>
+            <article v-if="view === 'read' && !loading" :class="['reader-surface min-h-full', readerThemeClass]" @click="handleReaderClick">
+                <div class="reader-topbar">
+                    <div class="reader-topbar-inner">
+                        <button @click.stop="setView('chapters')" class="reader-icon-button" title="目录"><span v-html="icon('list')"></span></button>
                         <div class="min-w-0 text-center">
                             <p class="text-sm font-semibold truncate">{{ currentBook?.articlename }}</p>
                             <p class="text-xs reader-muted truncate">{{ currentChapterTitle }}</p>
                         </div>
-                        <div class="flex items-center gap-1">
-                            <button @click.stop="goChapter(-1)" class="h-9 w-9 rounded-md border reader-divider flex items-center justify-center" title="上一章">
-                                <span v-html="icon('chevron-left')"></span>
-                            </button>
-                            <button @click.stop="goChapter(1)" class="h-9 w-9 rounded-md border reader-divider flex items-center justify-center" title="下一章">
-                                <span v-html="icon('chevron-right')"></span>
-                            </button>
+                        <div class="reader-control-row">
+                            <button @click.stop="goChapter(-1)" class="reader-icon-button" title="上一章"><span v-html="icon('chevron-left')"></span></button>
+                            <button @click.stop="goChapter(1)" class="reader-icon-button" title="下一章"><span v-html="icon('chevron-right')"></span></button>
                         </div>
                     </div>
                 </div>
 
-                <div class="max-w-4xl mx-auto px-4 md:px-10 py-8 md:py-12">
-                    <div class="reader-paper border reader-divider rounded-md px-5 md:px-14 py-10 md:py-14 min-h-[72vh]">
-                        <div class="flex items-center justify-between gap-4 mb-10 reader-muted text-xs">
+                <div class="reader-layout">
+                    <div class="reader-paper">
+                        <div class="reader-meta-row">
                             <span>第 {{ currentChapterIndex + 1 }} / {{ chapters.length }} 章</span>
                             <span>{{ contentIsCached ? '本地缓存' : '在线内容' }}</span>
                         </div>
-                        <h1 class="text-2xl md:text-3xl font-bold mb-10 text-center">{{ currentChapterTitle }}</h1>
+                        <h1>{{ currentChapterTitle }}</h1>
                         <div class="novel-content select-text" :style="{ fontSize: fontSize + 'px' }" v-html="currentContent"></div>
-                        <div class="mt-16 pt-8 border-t reader-divider flex items-center justify-between reader-muted text-sm">
-                            <button @click.stop="goChapter(-1)" class="px-3 py-2 rounded-md border reader-divider">上一章</button>
-                            <button @click.stop="goChapter(1)" class="px-3 py-2 rounded-md border reader-divider">下一章</button>
+                        <div class="reader-bottom-row">
+                            <button @click.stop="goChapter(-1)">上一章</button>
+                            <button @click.stop="goChapter(1)">下一章</button>
                         </div>
                     </div>
                 </div>
             </article>
         </section>
     </main>
+
+    <nav v-if="view !== 'read'" class="mobile-nav">
+        <button @click="setView('search')" :class="view === 'search' || view === 'chapters' ? 'active' : ''">
+            <span v-html="icon('search')"></span><small>发现</small>
+        </button>
+        <button @click="openShelf" :class="view === 'shelf' ? 'active' : ''">
+            <span v-html="icon('library')"></span><small>书架</small>
+        </button>
+        <button @click="openSources" :class="view === 'sources' ? 'active' : ''">
+            <span v-html="icon('globe')"></span><small>书源</small>
+        </button>
+    </nav>
+
+    <div v-if="selectedBook" class="drawer-backdrop" @click.self="closeBookDetails">
+        <aside class="book-drawer">
+            <div class="drawer-header">
+                <span class="source-pill"
+                      :style="{ background: (selectedBook.source_color || getSourceColor(selectedBook.source_id) || '#e2e8f0') + '22', color: selectedBook.source_color || getSourceColor(selectedBook.source_id) || '#64748b' }">
+                    {{ selectedBook.source_name || getSourceName(selectedBook.source_id) || '未知书源' }}
+                </span>
+                <button @click="closeBookDetails" class="icon-button"><span v-html="icon('x')"></span></button>
+            </div>
+            <div class="drawer-book-main">
+                <book-cover :src="bookCover(selectedBook)" :title="bookName(selectedBook)"></book-cover>
+                <div class="min-w-0">
+                    <h2>{{ bookName(selectedBook) }}</h2>
+                    <p>{{ bookAuthor(selectedBook) || '未知作者' }}</p>
+                    <div class="drawer-action-row">
+                        <button v-if="selectedBookProgress" @click="startSelectedBook(true)" class="primary-action">
+                            <span v-html="icon('play')"></span><span>继续阅读</span>
+                        </button>
+                        <button @click="startSelectedBook(false)" class="primary-action">
+                            <span v-html="icon('list')"></span><span>查看目录</span>
+                        </button>
+                        <button @click="addToShelf(selectedBook)" class="secondary-action">
+                            <span v-html="icon('bookmark')"></span><span>加入书架</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-section">
+                <h3>简介</h3>
+                <p>{{ selectedBook.intro || '暂无简介' }}</p>
+            </div>
+        </aside>
+    </div>
+
+    <div class="toast-stack">
+        <div v-for="toast in toasts" :key="toast.id" :class="['toast', toast.type]">
+            <span v-html="icon(toast.type === 'error' ? 'alert-circle' : 'check-circle')"></span>
+            <p>{{ toast.message }}</p>
+        </div>
+    </div>
 </div>
 
-<script>
-            const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
-
-    createApp({
-        setup() {
-            const view = ref('search');
-            const keyword = ref('');
-            const books = ref([]);
-            const shelf = ref([]);
-            const suggestions = ref([]);
-            const showSuggestions = ref(false);
-            const hasSearched = ref(false);
-            const chapters = ref([]);
-            const currentContent = ref('');
-            const currentBook = ref(null);
-            const currentChapterTitle = ref('');
-            const currentChapterIndex = ref(-1);
-            const contentIsCached = ref(false);
-            const fontSize = ref(Number(localStorage.getItem('readerFontSize') || 18));
-            const theme = ref(localStorage.getItem('readerTheme') || 'eye');
-            const loading = ref(false);
-            const activeTag = ref('');
-            const editingTagsAid = ref('');
-            const tagDraft = ref('');
-            const cachingAid = ref('');
-            const cacheProgress = ref({ current: 0, total: 0 });
-            const downloadingKey = ref('');
-            const scrollPane = ref(null);
-            let suggestTimer = null;
-
-            // 书源管理
-            const sourcesList = ref([]);
-            const showSourceForm = ref(false);
-            const editingSource = ref(null);
-            const sourceForm = ref({
-                name: '', base_url: '', color: '#4F46E5',
-                search_path: '/api/novel/search?q={query}&page={page}&limit=20&lang=zh-CN',
-                chapter_list_path: '/api/chapter/list/{aid}?lang=zh-CN',
-                chapter_content_path: '/api/chapter/content/{aid}/{cid}?lang=zh-CN',
-                field_map: { name: 'articlename', author: 'author', aid: 'articleid', cover: 'cover', intro: 'intro' },
-            });
-
-            const themes = [
-                { key: 'eye', name: '护眼模式', swatch: 'bg-[#fbfff4] border-[#9ab986]' },
-                { key: 'night', name: '夜间模式', swatch: 'bg-black border-slate-500' },
-                { key: 'parchment', name: '羊皮纸模式', swatch: 'bg-[#f7ebcd] border-[#b99352]' },
-            ];
-            const quickTerms = ['凡人修仙传', '斗破苍穹', '诡秘之主', '庆余年', '吞噬星空', '完美世界'];
-
-            const readerThemeClass = computed(() => `theme-${theme.value}`);
-            const allTags = computed(() => {
-                const tags = new Set();
-                shelf.value.forEach(book => (book.tags || []).forEach(tag => tags.add(tag)));
-                return Array.from(tags);
-            });
-            const filteredShelf = computed(() => {
-                if (!activeTag.value) return shelf.value;
-                return shelf.value.filter(book => (book.tags || []).includes(activeTag.value));
-            });
-            const enabledSourceCount = computed(() => sourcesList.value.filter(src => src.enabled).length);
-            const cachedBookCount = computed(() => shelf.value.filter(book => book.cached).length);
-            const recentShelf = computed(() => shelf.value.slice(0, 4));
-
-            const redrawIcons = () => {};
-            watch([view, theme, sourcesList, showSourceForm], redrawIcons);
-            watch(fontSize, value => localStorage.setItem('readerFontSize', value));
-
-            const icon = (name) => {
-                const icons = {
-                    tag: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>',
-                    download: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>',
-                    'file-text': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>',
-                    'book-open': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
-                    database: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>',
-                    'trash-2': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
-                    plus: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
-                    pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
-                    'refresh-cw': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>',
-                    search: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
-                    library: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg>',
-                    globe: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
-                    'arrow-right': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
-                    'arrow-left': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
-                    'chevron-left': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
-                    'chevron-right': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
-                    list: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>',
-                };
-                return icons[name] || '';
-            };
-
-            const navClass = (active) => [
-                'w-full h-10 px-3 rounded-md flex items-center gap-3 text-sm font-medium transition',
-                active ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50'
-            ];
-            const tagFilterClass = (active) => [
-                'px-3 py-1.5 rounded-md border text-sm transition',
-                active ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-500'
-            ];
-
-            const setView = (nextView) => {
-                view.value = nextView;
-                showSuggestions.value = false;
-                redrawIcons();
-            };
-
-            const setTheme = (key) => {
-                theme.value = key;
-                localStorage.setItem('readerTheme', key);
-            };
-
-            const getCover = (id) => `https://pic.cooks.tw/${Math.floor(Number(id) / 1000)}/${id}/${id}s.jpg`;
-            const bookAid = (book) => String(book?.articleid || book?.aid || '');
-            const bookName = (book) => book?.articlename || book?.name || '';
-            const bookAuthor = (book) => book?.author || '';
-
-            // 书源辅助
-            const getSourceName = (sid) => {
-                if (!sid) return '';
-                const s = sourcesList.value.find(x => x.id === sid);
-                return s ? s.name : '';
-            };
-            const getSourceColor = (sid) => {
-                if (!sid) return '#888';
-                const s = sourcesList.value.find(x => x.id === sid);
-                return s ? (s.color || '#888') : '#888';
-            };
-
-            const fetchJson = async (url, options = {}) => {
-                const res = await fetch(url, options);
-                if (!res.ok) {
-                    let detail = `${res.status}`;
-                    try {
-                        const body = await res.json();
-                        detail = body.detail || body.msg || detail;
-                    } catch (error) {}
-                    throw new Error(detail);
-                }
-                return res.json();
-            };
-
-            // 搜索
-            const doSearch = async () => {
-                if (!keyword.value.trim()) return;
-                loading.value = true;
-                setView('search');
-                try {
-                    const json = await fetchJson(`/api/search/?q=${encodeURIComponent(keyword.value.trim())}`);
-                    books.value = json.data?.items || [];
-                    hasSearched.value = true;
-                    showSuggestions.value = false;
-                } catch (error) {
-                    alert(`搜索失败：${error.message}`);
-                } finally {
-                    loading.value = false;
-                }
-            };
-
-            const fetchSuggestions = () => {
-                clearTimeout(suggestTimer);
-                const text = keyword.value.trim();
-                if (!text) {
-                    suggestions.value = [];
-                    showSuggestions.value = false;
-                    hasSearched.value = false;
-                    books.value = [];
-                    return;
-                }
-                suggestTimer = setTimeout(async () => {
-                    try {
-                        const json = await fetchJson(`/api/search/suggest?q=${encodeURIComponent(text)}`);
-                        suggestions.value = json.suggestions || [];
-                        showSuggestions.value = suggestions.value.length > 0;
-                    } catch (error) {
-                        suggestions.value = [];
-                    }
-                }, 240);
-            };
-
-            const chooseSuggestion = (item) => {
-                keyword.value = item.name;
-                showSuggestions.value = false;
-                doSearch();
-            };
-
-            const searchTerm = (term) => {
-                keyword.value = term;
-                showSuggestions.value = false;
-                doSearch();
-            };
-
-            // 书架
-            const loadShelf = async () => {
-                try {
-                    const data = await fetchJson('/api/bookshelf/');
-                    shelf.value = Array.isArray(data) ? data : [];
-                } catch (error) {
-                    shelf.value = [];
-                    console.error(error);
-                }
-            };
-
-            const openShelf = async () => {
-                setView('shelf');
-                await loadShelf();
-            };
-
-            const addToShelf = async (book) => {
-                const aid = bookAid(book);
-                if (!aid) {
-                    alert('这本书缺少书籍 ID，无法加入书架');
-                    return;
-                }
-
-                try {
-                    await fetchJson('/api/bookshelf/add', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            aid,
-                            name: bookName(book),
-                            author: book.author || '',
-                            cover: book.cover || getCover(aid),
-                            source_id: book.source_id || '',
-                        })
-                    });
-                    await loadShelf();
-                    alert('已加入书架');
-                } catch (error) {
-                    alert(`加入书架失败：${error.message}`);
-                }
-            };
-
-            const removeFromShelf = async (aid) => {
-                if (!aid || !confirm('确认删除此书？将同时清除本地缓存。')) return;
-                try {
-                    await fetchJson(`/api/bookshelf/remove/${encodeURIComponent(aid)}`, { method: 'DELETE' });
-                    await loadShelf();
-                } catch (error) {
-                    alert(`移除失败：${error.message}`);
-                }
-            };
-
-            const checkUpdates = async () => {
-                loading.value = true;
-                try {
-                    const data = await fetchJson('/api/bookshelf/check-updates', { method: 'POST' });
-                    shelf.value = Array.isArray(data) ? data : [];
-                } catch (error) {
-                    alert(`检查更新失败：${error.message}`);
-                } finally {
-                    loading.value = false;
-                }
-            };
-
-            const clearBookCache = async (book) => {
-                if (!confirm(`确认清除「${book.name}」的本地缓存？`)) return;
-                try {
-                    await fetchJson(`/api/reader/cache/${encodeURIComponent(book.aid)}`, { method: 'DELETE' });
-                    await loadShelf();
-                } catch (error) {
-                    alert(`清除缓存失败：${error.message}`);
-                }
-            };
-
-            const clearAllCache = async () => {
-                if (!confirm('确认清除所有书籍的本地缓存？')) return;
-                try {
-                    await fetchJson('/api/reader/cache', { method: 'DELETE' });
-                    await loadShelf();
-                } catch (error) {
-                    alert(`清除缓存失败：${error.message}`);
-                }
-            };
-
-            const startTagEdit = (book) => {
-                editingTagsAid.value = book.aid;
-                tagDraft.value = (book.tags || []).join(', ');
-                redrawIcons();
-            };
-
-            const saveTags = async (book) => {
-                const tags = tagDraft.value.split(/[,，\s]+/).map(item => item.trim()).filter(Boolean);
-                try {
-                    await fetchJson(`/api/bookshelf/tags/${encodeURIComponent(book.aid)}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tags }),
-                    });
-                    editingTagsAid.value = '';
-                    await loadShelf();
-                } catch (error) {
-                    alert(`保存标签失败：${error.message}`);
-                }
-            };
-
-            // 打开书籍
-            const openBook = async (book, autoResume = false) => {
-                currentBook.value = {
-                    articleid: bookAid(book),
-                    articlename: bookName(book),
-                    author: book.author || '',
-                    progress: book.progress || null,
-                    source_id: book.source_id || '',
-                };
-                loading.value = true;
-                try {
-                    const params = new URLSearchParams();
-                    if (book.source_id) params.set('source', book.source_id);
-                    const url = `/api/reader/chapters/${currentBook.value.articleid}${params.toString() ? '?' + params : ''}`;
-                    const json = await fetchJson(url);
-                    chapters.value = json.data || [];
-                    const progress = currentBook.value.progress;
-                    if (autoResume && progress?.chapterid) {
-                        const index = chapters.value.findIndex(ch => String(ch.chapterid) === String(progress.chapterid));
-                        if (index >= 0) {
-                            await readChapter(chapters.value[index], index);
-                            return;
-                        }
-                    }
-                    setView('chapters');
-                } catch (error) {
-                    alert(`加载目录失败：${error.message}`);
-                } finally {
-                    loading.value = false;
-                }
-            };
-
-            const saveProgress = async (chapter, index) => {
-                const aid = currentBook.value?.articleid;
-                if (!aid) return;
-                const progress = {
-                    chapterid: String(chapter.chapterid),
-                    chaptername: chapter.chaptername || '',
-                    index,
-                };
-                currentBook.value.progress = progress;
-                localStorage.setItem(`readerProgress:${aid}`, JSON.stringify(progress));
-                try {
-                    await fetchJson(`/api/bookshelf/progress/${encodeURIComponent(aid)}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(progress),
-                    });
-                    await loadShelf();
-                } catch (error) {
-                    console.error(error);
-                }
-            };
-
-            const readChapter = async (chapter, index = -1) => {
-                if (!chapter || !currentBook.value) return;
-                const actualIndex = index >= 0
-                    ? index
-                    : chapters.value.findIndex(ch => String(ch.chapterid) === String(chapter.chapterid));
-
-                loading.value = true;
-                currentChapterTitle.value = chapter.chaptername;
-                try {
-                    const params = new URLSearchParams();
-                    if (currentBook.value.source_id) params.set('source', currentBook.value.source_id);
-                    const url = `/api/reader/content/${currentBook.value.articleid}/${chapter.chapterid}${params.toString() ? '?' + params : ''}`;
-                    const json = await fetchJson(url);
-                    const content = json.data?.content || '';
-                    currentContent.value = content.split('\n')
-                        .filter(p => p.trim() !== '')
-                        .map(p => `<p>${p.trim()}</p>`).join('');
-                    currentChapterIndex.value = actualIndex;
-                    contentIsCached.value = Boolean(json.cached);
-                    await saveProgress(chapter, actualIndex);
-                    setView('read');
-                    nextTick(() => scrollPane.value?.scrollTo(0, 0));
-                } catch (error) {
-                    alert(`加载正文失败：${error.message}`);
-                } finally {
-                    loading.value = false;
-                }
-            };
-
-            const goChapter = (offset) => {
-                const nextIndex = currentChapterIndex.value + offset;
-                if (nextIndex < 0 || nextIndex >= chapters.value.length) {
-                    alert(offset < 0 ? '已经是第一章' : '已经是最后一章');
-                    return;
-                }
-                readChapter(chapters.value[nextIndex], nextIndex);
-            };
-
-            const handleReaderClick = (event) => {
-                if (event.target.closest('button') || event.target.closest('a')) return;
-                const rect = event.currentTarget.getBoundingClientRect();
-                const ratio = (event.clientX - rect.left) / rect.width;
-                if (ratio < 0.28) goChapter(-1);
-                if (ratio > 0.72) goChapter(1);
-            };
-
-            const cacheBook = async (book) => {
-                const aid = bookAid(book);
-                if (!aid) return;
-                cachingAid.value = aid;
-                cacheProgress.value = { current: 0, total: 0 };
-                try {
-                    const params = new URLSearchParams();
-                    if (book.source_id) params.set('source', book.source_id);
-                    const url = `/api/reader/cache/${encodeURIComponent(aid)}${params.toString() ? '?' + params : ''}`;
-                    const res = await fetch(url, { method: 'POST' });
-                    if (!res.ok) throw new Error(`${res.status}`);
-                    const reader = res.body.getReader();
-                    const decoder = new TextDecoder();
-                    let buffer = '';
-                    let result = null;
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop();
-                        for (const line of lines) {
-                            if (!line.startsWith('data: ')) continue;
-                            try {
-                                const data = JSON.parse(line.slice(6));
-                                if (data.done) {
-                                    result = data;
-                                } else {
-                                    cacheProgress.value = { current: data.current, total: data.total };
-                                }
-                            } catch (e) {}
-                        }
-                    }
-                    await loadShelf();
-                } catch (error) {
-                    alert(`缓存失败：${error.message}`);
-                } finally {
-                    cachingAid.value = '';
-                    cacheProgress.value = { current: 0, total: 0 };
-                }
-            };
-
-            const fileNameFromDisposition = (header, fallback) => {
-                if (!header) return fallback;
-                const encoded = header.match(/filename\*=UTF-8''([^;]+)/i);
-                if (encoded?.[1]) {
-                    try { return decodeURIComponent(encoded[1]); } catch (error) {}
-                }
-                const plain = header.match(/filename="?([^"]+)"?/i);
-                return plain?.[1] || fallback;
-            };
-
-            const downloadBook = async (book, format) => {
-                const aid = bookAid(book);
-                if (!aid) return;
-                const normalizedFormat = format === 'ebup' ? 'epub' : format;
-                const key = `${aid}:${normalizedFormat}`;
-                downloadingKey.value = key;
-                try {
-                    const params = new URLSearchParams({ name: bookName(book), author: bookAuthor(book) });
-                    if (book.source_id) params.set('source', book.source_id);
-                    const res = await fetch(`/api/reader/download/${normalizedFormat}/${encodeURIComponent(aid)}?${params.toString()}`);
-                    if (!res.ok) {
-                        let detail = `${res.status}`;
-                        try { const body = await res.json(); detail = body.detail || body.msg || detail; } catch (error) {}
-                        throw new Error(detail);
-                    }
-                    const blob = await res.blob();
-                    const filename = fileNameFromDisposition(res.headers.get('Content-Disposition'), `${bookName(book) || aid}.${normalizedFormat}`);
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url; link.download = filename;
-                    document.body.appendChild(link); link.click(); link.remove();
-                    URL.revokeObjectURL(url);
-                } catch (error) {
-                    alert(`下载失败：${error.message}`);
-                } finally {
-                    downloadingKey.value = '';
-                }
-            };
-
-            // 书源管理
-            const loadSources = async () => {
-                try {
-                    sourcesList.value = await fetchJson('/api/sources/');
-                } catch (error) {
-                    sourcesList.value = [];
-                }
-            };
-
-            const openSources = async () => {
-                setView('sources');
-                loading.value = true;
-                await loadSources();
-                loading.value = false;
-            };
-
-            const resetSourceForm = () => {
-                sourceForm.value = {
-                    name: '', base_url: '', color: '#4F46E5',
-                    search_path: '/api/novel/search?q={query}&page={page}&limit=20&lang=zh-CN',
-                    chapter_list_path: '/api/chapter/list/{aid}?lang=zh-CN',
-                    chapter_content_path: '/api/chapter/content/{aid}/{cid}?lang=zh-CN',
-                    field_map: { name: 'articlename', author: 'author', aid: 'articleid', cover: 'cover', intro: 'intro' },
-                };
-            };
-
-            const editSource = (src) => {
-                editingSource.value = src;
-                sourceForm.value = {
-                    name: src.name || '',
-                    base_url: src.base_url || '',
-                    color: src.color || '#4F46E5',
-                    search_path: src.search_path || '',
-                    chapter_list_path: src.chapter_list_path || '',
-                    chapter_content_path: src.chapter_content_path || '',
-                    field_map: {
-                        name: (src.field_map || {}).name || 'articlename',
-                        author: (src.field_map || {}).author || 'author',
-                        aid: (src.field_map || {}).aid || 'articleid',
-                        cover: (src.field_map || {}).cover || 'cover',
-                        intro: (src.field_map || {}).intro || 'intro',
-                    },
-                };
-                showSourceForm.value = true;
-            };
-
-            const saveSource = async () => {
-                const form = sourceForm.value;
-                if (!form.name.trim() || !form.base_url.trim()) {
-                    alert('名称和 Base URL 不能为空');
-                    return;
-                }
-                try {
-                    if (editingSource.value) {
-                        await fetchJson(`/api/sources/${editingSource.value.id}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(form),
-                        });
-                    } else {
-                        await fetchJson('/api/sources/', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(form),
-                        });
-                    }
-                    showSourceForm.value = false;
-                    await loadSources();
-                } catch (error) {
-                    alert(`保存失败：${error.message}`);
-                }
-            };
-
-            const deleteSource = async (src) => {
-                if (!confirm(`确认删除书源「${src.name}」？`)) return;
-                try {
-                    await fetchJson(`/api/sources/${src.id}`, { method: 'DELETE' });
-                    await loadSources();
-                } catch (error) {
-                    alert(`删除失败：${error.message}`);
-                }
-            };
-
-            const toggleSource = async (src) => {
-                try {
-                    await fetchJson(`/api/sources/${src.id}/toggle`, { method: 'POST' });
-                    await loadSources();
-                } catch (error) {
-                    alert(`操作失败：${error.message}`);
-                }
-            };
-
-            onMounted(async () => {
-                await Promise.all([loadShelf(), loadSources()]);
-                redrawIcons();
-            });
-
-            return {
-                view, keyword, books, shelf, suggestions, showSuggestions, hasSearched, chapters,
-                currentContent, currentBook, currentChapterTitle, currentChapterIndex,
-                contentIsCached, fontSize, theme, themes, loading, activeTag, allTags,
-                filteredShelf, enabledSourceCount, cachedBookCount, recentShelf, quickTerms,
-                editingTagsAid, tagDraft, cachingAid, cacheProgress, downloadingKey, scrollPane,
-                sourcesList, showSourceForm, editingSource, sourceForm,
-                readerThemeClass, navClass, tagFilterClass, setView, setTheme,
-                getCover, doSearch, fetchSuggestions, chooseSuggestion, searchTerm, loadShelf,
-                openShelf, addToShelf, removeFromShelf, checkUpdates, startTagEdit,
-                saveTags, openBook, readChapter, goChapter, handleReaderClick, cacheBook,
-                downloadBook, getSourceName, getSourceColor,
-                loadSources, openSources, resetSourceForm, editSource, saveSource, deleteSource, toggleSource,
-                clearBookCache, clearAllCache, icon,
-            };
-        }
-    }).mount('#app');
-</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="/static/app.js"></script>
 </body>
 </html>
