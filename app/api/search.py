@@ -65,9 +65,19 @@ async def _search_all(keyword: str, page: int) -> list[dict]:
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     merged = []
+    seen = set()
     for r in results:
         if isinstance(r, list):
-            merged.extend(r)
+            for item in r:
+                key = (
+                    str(item.get("articleid", "")),
+                    item.get("articlename", ""),
+                    item.get("author", ""),
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(item)
     return merged
 
 

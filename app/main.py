@@ -7,30 +7,60 @@ import asyncio
 
 from app.api import search, bookshelf, reader, sources
 
-DEFAULT_SOURCE_ID = "cooks_tw"
-DEFAULT_SOURCE = {
-    "id": DEFAULT_SOURCE_ID,
-    "name": "Cooks小说",
-    "base_url": "https://novel.cooks.tw",
-    "search_path": "/api/novel/search?q={query}&page={page}&limit=20&lang=zh-CN",
-    "chapter_list_path": "/api/chapter/list/{aid}?lang=zh-CN",
-    "chapter_content_path": "/api/chapter/content/{aid}/{cid}?lang=zh-CN",
-    "enabled": True,
-    "color": "#0d9488",
-    "field_map": {
-        "name": "articlename",
-        "author": "author",
-        "aid": "articleid",
-        "cover": "cover",
-        "intro": "intro",
-    },
+DEFAULT_FIELD_MAP = {
+    "name": "articlename",
+    "author": "author",
+    "aid": "articleid",
+    "cover": "cover",
+    "intro": "intro",
 }
 
-def ensure_default_source():
+DEFAULT_SOURCES = [
+    {
+        "id": "cooks_tw",
+        "name": "Cooks小说",
+        "base_url": "https://novel.cooks.tw",
+        "search_path": "/api/novel/search?q={query}&page={page}&limit=20&lang=zh-CN",
+        "chapter_list_path": "/api/chapter/list/{aid}?lang=zh-CN",
+        "chapter_content_path": "/api/chapter/content/{aid}/{cid}?lang=zh-CN",
+        "enabled": True,
+        "color": "#0d9488",
+        "field_map": DEFAULT_FIELD_MAP,
+    },
+    {
+        "id": "cooks_tw_traditional",
+        "name": "Cooks繁体",
+        "base_url": "https://novel.cooks.tw",
+        "search_path": "/api/novel/search?q={query}&page={page}&limit=20&lang=zh-TW",
+        "chapter_list_path": "/api/chapter/list/{aid}?lang=zh-TW",
+        "chapter_content_path": "/api/chapter/content/{aid}/{cid}?lang=zh-TW",
+        "enabled": True,
+        "color": "#7c3aed",
+        "field_map": DEFAULT_FIELD_MAP,
+    },
+    {
+        "id": "cooks_tw_backup",
+        "name": "Cooks备用",
+        "base_url": "https://novel.cooks.tw",
+        "search_path": "/api/novel/search?q={query}&page={page}&limit=20",
+        "chapter_list_path": "/api/chapter/list/{aid}",
+        "chapter_content_path": "/api/chapter/content/{aid}/{cid}",
+        "enabled": True,
+        "color": "#2563eb",
+        "field_map": DEFAULT_FIELD_MAP,
+    },
+]
+
+def ensure_default_sources():
     db = bookshelf.load_db()
     sources_list = db.get("sources", [])
-    if not any(s.get("id") == DEFAULT_SOURCE_ID for s in sources_list):
-        sources_list.append(DEFAULT_SOURCE)
+    existing_ids = {source.get("id") for source in sources_list}
+    changed = False
+    for source in DEFAULT_SOURCES:
+        if source["id"] not in existing_ids:
+            sources_list.append(source.copy())
+            changed = True
+    if changed:
         db["sources"] = sources_list
         bookshelf.save_db(db)
 
@@ -69,7 +99,7 @@ app.include_router(sources.router, prefix="/api/sources", tags=["书源"])
 @app.on_event("startup")
 async def start_bookshelf_update_watcher():
     """初始化并启动后台任务"""
-    ensure_default_source()
+    ensure_default_sources()
     asyncio.create_task(bookshelf.update_watcher())
 
 @app.get("/")

@@ -17,6 +17,40 @@
                 "cover": "cover",
                 "intro": "intro"
             }
+        },
+        {
+            "id": "cooks_tw_traditional",
+            "name": "Cooks繁体",
+            "base_url": "https://novel.cooks.tw",
+            "search_path": "/api/novel/search?q={query}&page={page}&limit=20&lang=zh-TW",
+            "chapter_list_path": "/api/chapter/list/{aid}?lang=zh-TW",
+            "chapter_content_path": "/api/chapter/content/{aid}/{cid}?lang=zh-TW",
+            "enabled": true,
+            "color": "#7c3aed",
+            "field_map": {
+                "name": "articlename",
+                "author": "author",
+                "aid": "articleid",
+                "cover": "cover",
+                "intro": "intro"
+            }
+        },
+        {
+            "id": "cooks_tw_backup",
+            "name": "Cooks备用",
+            "base_url": "https://novel.cooks.tw",
+            "search_path": "/api/novel/search?q={query}&page={page}&limit=20",
+            "chapter_list_path": "/api/chapter/list/{aid}",
+            "chapter_content_path": "/api/chapter/content/{aid}/{cid}",
+            "enabled": true,
+            "color": "#2563eb",
+            "field_map": {
+                "name": "articlename",
+                "author": "author",
+                "aid": "articleid",
+                "cover": "cover",
+                "intro": "intro"
+            }
         }
     ]
 }
