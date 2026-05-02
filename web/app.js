@@ -73,6 +73,8 @@ createApp({
         const cachingAid = ref("");
         const cacheProgress = ref({ current: 0, total: 0 });
         const downloadingKey = ref("");
+        const showExportDialog = ref(false);
+        const exportBook = ref(null);
         const scrollPane = ref(null);
         const toasts = ref([]);
         const searchHistory = ref(readStoredArray(STORAGE_KEYS.searchHistory));
@@ -576,6 +578,18 @@ createApp({
             if (ratio > 0.72) goChapter(1);
         };
 
+        const openExportDialog = (book) => {
+            exportBook.value = book;
+            showExportDialog.value = true;
+        };
+
+        const exportAs = async (format) => {
+            showExportDialog.value = false;
+            if (!exportBook.value) return;
+            await downloadBook(exportBook.value, format);
+            exportBook.value = null;
+        };
+
         const cacheBook = async (book) => {
             const aid = bookAid(book);
             if (!aid) return;
@@ -804,6 +818,10 @@ createApp({
             cacheProgress,
             cachePercent,
             downloadingKey,
+            showExportDialog,
+            exportBook,
+            openExportDialog,
+            exportAs,
             scrollPane,
             sourcesList,
             showSourceForm,

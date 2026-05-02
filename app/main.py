@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from contextlib import asynccontextmanager
 import os
 import asyncio
 
@@ -64,10 +65,18 @@ def ensure_default_sources():
         db["sources"] = sources_list
         bookshelf.save_db(db)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理"""
+    ensure_default_sources()
+    asyncio.create_task(bookshelf.update_watcher())
+    yield
+
 app = FastAPI(
     title="云读小说 API",
     description="基于 FastAPI 的高性能异步小说阅读器后端",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # --- 1. 配置跨域 (CORS) ---
@@ -95,12 +104,6 @@ app.include_router(reader.router, prefix="/api/reader", tags=["阅读"])
 app.include_router(sources.router, prefix="/api/sources", tags=["书源"])
 
 # --- 4. 基础路由 ---
-
-@app.on_event("startup")
-async def start_bookshelf_update_watcher():
-    """初始化并启动后台任务"""
-    ensure_default_sources()
-    asyncio.create_task(bookshelf.update_watcher())
 
 @app.get("/")
 async def index():

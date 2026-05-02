@@ -776,6 +776,26 @@ button:disabled {
     color: #0f766e;
 }
 
+.icon-row button.is-loading,
+.icon-button.is-loading {
+    background: #f0fdfa;
+    border-color: #14b8a6;
+    color: #0f766e;
+    cursor: wait;
+    position: relative;
+    overflow: hidden;
+}
+
+.icon-row button.is-loading::after,
+.icon-button.is-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent 25%, rgba(20, 184, 166, 0.2) 50%, transparent 75%);
+    animation: shimmer 1.5s infinite;
+}
+
 .progress-wrap {
     margin-top: 9px;
 }
@@ -901,6 +921,28 @@ button:disabled {
     color: #0f766e;
 }
 
+.is-loading {
+    background: #f0fdfa !important;
+    border-color: #14b8a6 !important;
+    color: #0f766e !important;
+    cursor: wait;
+    position: relative;
+}
+
+.is-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent 25%, rgba(20, 184, 166, 0.15) 50%, transparent 75%);
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
 .danger-action {
     border: 1px solid #fecdd3;
     background: #fff;
@@ -961,6 +1003,57 @@ button:disabled {
     border-radius: 8px;
     background: #fff;
     box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
+.modal-panel.small {
+    width: min(380px, 100%);
+}
+
+.export-options {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+}
+
+.export-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid #d9e2ec;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.export-option:hover {
+    border-color: #14b8a6;
+    background: #f0fdfa;
+}
+
+.export-option svg {
+    width: 28px;
+    height: 28px;
+    color: #0f766e;
+    flex-shrink: 0;
+}
+
+.export-option div {
+    text-align: left;
+}
+
+.export-option strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: #172033;
+}
+
+.export-option p {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: #64748b;
 }
 
 .modal-header,

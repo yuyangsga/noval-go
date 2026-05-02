@@ -270,9 +270,7 @@
                             </div>
                             <div class="icon-row">
                                 <button @click="startTagEdit(book)" title="标签"><span v-html="icon('tag')"></span></button>
-                                <button @click="cacheBook(book)" :disabled="cachingAid === book.aid" title="全本缓存"><span v-html="icon('download')"></span></button>
-                                <button @click="downloadBook(book, 'txt')" :disabled="downloadingKey === `${book.aid}:txt`" title="下载 TXT"><span v-html="icon('file-text')"></span></button>
-                                <button @click="downloadBook(book, 'epub')" :disabled="downloadingKey === `${book.aid}:epub`" title="下载 EPUB"><span v-html="icon('book-open')"></span></button>
+                                <button @click="openExportDialog(book)" title="全本导出"><span v-html="icon('download')"></span></button>
                                 <button @click="clearBookCache(book)" title="清除缓存"><span v-html="icon('database')"></span></button>
                                 <button @click="removeFromShelf(book.aid)" title="删除"><span v-html="icon('trash-2')"></span></button>
                             </div>
@@ -367,17 +365,9 @@
                         </div>
                     </div>
                     <div class="toolbar-actions">
-                        <button @click="downloadBook(currentBook, 'txt')" :disabled="!currentBook || downloadingKey === `${currentBook?.articleid}:txt`" class="secondary-action">
-                            <span v-html="icon('file-text')"></span><span>TXT</span>
-                        </button>
-                        <button @click="downloadBook(currentBook, 'epub')" :disabled="!currentBook || downloadingKey === `${currentBook?.articleid}:epub`" class="secondary-action">
-                            <span v-html="icon('book-open')"></span><span>EPUB</span>
-                        </button>
-                        <button @click="cacheBook(currentBook)" :disabled="!currentBook || cachingAid === String(currentBook.articleid)" class="primary-action">
+                        <button @click="openExportDialog(currentBook)" :disabled="!currentBook" class="primary-action">
                             <span v-html="icon('download')"></span>
-                            <span v-if="cachingAid === String(currentBook?.articleid) && cacheProgress.total > 0">{{ cacheProgress.current }}/{{ cacheProgress.total }}</span>
-                            <span v-else-if="cachingAid === String(currentBook?.articleid)">缓存中</span>
-                            <span v-else>全本缓存</span>
+                            <span>全本导出</span>
                         </button>
                     </div>
                 </div>
@@ -423,6 +413,31 @@
             </article>
         </section>
     </main>
+
+    <div v-if="showExportDialog" class="modal-backdrop" @click.self="showExportDialog = false">
+        <div class="modal-panel small">
+            <div class="modal-header">
+                <h3>选择导出格式</h3>
+                <button @click="showExportDialog = false" class="icon-button"><span v-html="icon('x')"></span></button>
+            </div>
+            <div class="export-options">
+                <button @click="exportAs('txt')" class="export-option">
+                    <span v-html="icon('file-text')"></span>
+                    <div>
+                        <strong>TXT</strong>
+                        <p>纯文本格式，兼容性好</p>
+                    </div>
+                </button>
+                <button @click="exportAs('epub')" class="export-option">
+                    <span v-html="icon('book-open')"></span>
+                    <div>
+                        <strong>EPUB</strong>
+                        <p>电子书格式，支持排版</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <nav v-if="view !== 'read'" class="mobile-nav">
         <button @click="setView('search')" :class="view === 'search' || view === 'chapters' ? 'active' : ''">
