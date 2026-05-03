@@ -981,6 +981,36 @@ button:disabled {
     to { transform: rotate(360deg); }
 }
 
+.export-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.export-progress span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f766e;
+}
+
+.progress-bar {
+    width: 200px;
+    height: 6px;
+    border-radius: 999px;
+    background: #dbe5ef;
+    overflow: hidden;
+}
+
+.progress-bar i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #0f766e;
+    transition: width 200ms ease;
+}
+
 .modal-backdrop,
 .drawer-backdrop {
     position: fixed;

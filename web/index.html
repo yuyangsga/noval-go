@@ -88,12 +88,16 @@
         </header>
 
         <section ref="scrollPane" :class="['content-pane', view === 'read' ? readerThemeClass : '']">
-            <div v-if="loading" class="loading-state">
+            <div v-if="loading || cachingAid" class="loading-state">
                 <div class="spinner"></div>
-                <p>{{ loadingText }}</p>
+                <p>{{ cachingAid ? '正在导出' : loadingText }}</p>
+                <div v-if="cachingAid && cacheProgress.total > 0" class="export-progress">
+                    <span>{{ cacheProgress.current }} / {{ cacheProgress.total }} 章</span>
+                    <div class="progress-bar"><i :style="{ width: cachePercent + '%' }"></i></div>
+                </div>
             </div>
 
-            <div v-if="view === 'search' && !loading" class="page-wrap">
+            <div v-if="view === 'search' && !loading && !cachingAid" class="page-wrap">
                 <section v-if="!hasSearched && books.length === 0" class="home-layout">
                     <div class="home-lead">
                         <p class="eyebrow">云读小说</p>
@@ -227,7 +231,7 @@
                 </section>
             </div>
 
-            <div v-if="view === 'shelf' && !loading" class="page-wrap">
+            <div v-if="view === 'shelf' && !loading && !cachingAid" class="page-wrap">
                 <div class="section-heading page-heading">
                     <div>
                         <p class="eyebrow">私人书架</p>
@@ -293,7 +297,7 @@
                 </div>
             </div>
 
-            <div v-if="view === 'sources' && !loading" class="page-wrap narrow">
+            <div v-if="view === 'sources' && !loading && !cachingAid" class="page-wrap narrow">
                 <div class="section-heading page-heading">
                     <div>
                         <p class="eyebrow">书源</p>
@@ -354,7 +358,7 @@
                 </div>
             </div>
 
-            <div v-if="view === 'chapters' && !loading" class="page-wrap narrow">
+            <div v-if="view === 'chapters' && !loading && !cachingAid" class="page-wrap narrow">
                 <div class="section-heading page-heading">
                     <div class="flex items-center gap-3 min-w-0">
                         <button @click="setView('search')" class="icon-button"><span v-html="icon('arrow-left')"></span></button>
@@ -381,7 +385,7 @@
                 </div>
             </div>
 
-            <article v-if="view === 'read' && !loading" :class="['reader-surface min-h-full', readerThemeClass]" @click="handleReaderClick">
+            <article v-if="view === 'read' && !loading && !cachingAid" :class="['reader-surface min-h-full', readerThemeClass]" @click="handleReaderClick">
                 <div class="reader-topbar">
                     <div class="reader-topbar-inner">
                         <button @click.stop="setView('chapters')" class="reader-icon-button" title="目录"><span v-html="icon('list')"></span></button>

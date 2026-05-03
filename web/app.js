@@ -586,8 +586,44 @@ createApp({
         const exportAs = async (format) => {
             showExportDialog.value = false;
             if (!exportBook.value) return;
-            await downloadBook(exportBook.value, format);
-            exportBook.value = null;
+            const book = exportBook.value;
+            const aid = bookAid(book);
+            if (!aid) return;
+            cachingAid.value = aid;
+            cacheProgress.value = { current: 0, total: 0 };
+            try {
+                const params = new URLSearchParams();
+                if (book.source_id) params.set("source", book.source_id);
+                const cacheUrl = `/api/reader/cache/${encodeURIComponent(aid)}${params.toString() ? "?" + params : ""}`;
+                const res = await fetch(cacheUrl, { method: "POST" });
+                if (!res.ok) throw new Error(`${res.status}`);
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = "";
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split("\n");
+                    buffer = lines.pop();
+                    for (const line of lines) {
+                        if (!line.startsWith("data: ")) continue;
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            if (!data.done) {
+                                cacheProgress.value = { current: data.current, total: data.total };
+                            }
+                        } catch (error) {}
+                    }
+                }
+                await downloadBook(book, format);
+            } catch (error) {
+                toast(`导出失败：${error.message}`, "error");
+            } finally {
+                cachingAid.value = "";
+                cacheProgress.value = { current: 0, total: 0 };
+                exportBook.value = null;
+            }
         };
 
         const cacheBook = async (book) => {
